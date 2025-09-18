@@ -1,4 +1,3 @@
-import { Html } from "@react-three/drei";
 import { useTelegraph } from "../lib/stores/useTelegraph";
 
 export default function TelegraphInputHints() {
@@ -12,9 +11,7 @@ export default function TelegraphInputHints() {
   const opacity = Math.max(0.3, 1.0 - (successfulInteractions * 0.2));
   
   return (
-    <Html
-      center
-      transform={false}
+    <div
       style={{ 
         pointerEvents: 'none',
         position: 'fixed',
@@ -64,6 +61,6 @@ export default function TelegraphInputHints() {
           </div>
         )}
       </div>
-    </Html>
+    </div>
   );
 }

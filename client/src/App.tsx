@@ -6,6 +6,7 @@ import Game from "./components/Game";
 import HUD from "./components/HUD";
 import CombatUI from "./components/CombatUI";
 import BossIntro from "./components/BossIntro";
+import TelegraphInputHints from "./components/TelegraphInputHints";
 import { useGenocide } from "./lib/stores/useGenocide";
 
 // Define control keys for the game
@@ -134,6 +135,7 @@ function App() {
         
         <HUD />
         <CombatUI />
+        <TelegraphInputHints />
       </KeyboardControls>
       </div>
     </>
