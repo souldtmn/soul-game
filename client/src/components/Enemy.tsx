@@ -53,8 +53,8 @@ export default function Enemy({ enemy }: EnemyProps) {
     const enemyPos = new THREE.Vector3(enemy.position.x, 0, enemy.position.z);
     const distanceToPlayer = playerPos.distanceTo(enemyPos);
     
-    // Update telegraph wind-up if this enemy is telegraphing
-    if (telegraphPhase === 'winding_up' && currentEnemy?.id === enemy.id) {
+    // Update telegraph wind-up if this enemy is telegraphing (both winding_up AND imminent)
+    if ((telegraphPhase === 'winding_up' || telegraphPhase === 'imminent') && currentEnemy?.id === enemy.id) {
       updateWindup(delta);
     }
 
