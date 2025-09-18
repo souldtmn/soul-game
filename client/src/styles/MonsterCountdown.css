@@ -1,0 +1,299 @@
+/* Monster Countdown CSS Animations and Styling */
+
+.countdown-container {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+  pointer-events: none;
+  font-family: 'Courier New', monospace;
+}
+
+.monster-countdown {
+  background-color: rgba(0, 0, 0, 0.8);
+  border: 2px solid #fff;
+  border-radius: 8px;
+  padding: 10px 15px;
+  color: #fff;
+  font-size: 16px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  text-align: center;
+  min-width: 200px;
+  transition: all 0.3s ease;
+}
+
+/* Clean state (14-10 enemies) */
+.monster-countdown.clean {
+  color: #ffffff;
+  border-color: #ffffff;
+  background-color: rgba(0, 0, 0, 0.8);
+  text-shadow: none;
+}
+
+/* Flicker state (9-5 enemies) */
+.monster-countdown.flicker {
+  color: #ffff99;
+  border-color: #ffff99;
+  background-color: rgba(0, 0, 0, 0.85);
+  animation: flicker 0.5s infinite alternate;
+  text-shadow: 0 0 5px #ffff99;
+}
+
+@keyframes flicker {
+  0% {
+    opacity: 1;
+    filter: brightness(1);
+  }
+  25% {
+    opacity: 0.8;
+    filter: brightness(0.9);
+  }
+  50% {
+    opacity: 1;
+    filter: brightness(1.1);
+  }
+  75% {
+    opacity: 0.9;
+    filter: brightness(0.95);
+  }
+  100% {
+    opacity: 1;
+    filter: brightness(1);
+  }
+}
+
+/* Glitch state (4-2 enemies) */
+.monster-countdown.glitch {
+  color: #ff6b6b;
+  border-color: #ff6b6b;
+  background-color: rgba(20, 0, 0, 0.9);
+  animation: glitch 0.3s infinite;
+  text-shadow: 
+    2px 0 #ff0000,
+    -2px 0 #00ffff,
+    0 0 10px #ff6b6b;
+  position: relative;
+}
+
+@keyframes glitch {
+  0% {
+    transform: translate(0);
+  }
+  20% {
+    transform: translate(-2px, 2px);
+  }
+  40% {
+    transform: translate(-2px, -2px);
+  }
+  60% {
+    transform: translate(2px, 2px);
+  }
+  80% {
+    transform: translate(2px, -2px);
+  }
+  100% {
+    transform: translate(0);
+  }
+}
+
+.monster-countdown.glitch::before {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  color: #ff0000;
+  mix-blend-mode: multiply;
+  animation: glitch-1 0.3s infinite;
+}
+
+.monster-countdown.glitch::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  color: #00ffff;
+  mix-blend-mode: multiply;
+  animation: glitch-2 0.3s infinite;
+}
+
+@keyframes glitch-1 {
+  0% {
+    transform: translate(0);
+  }
+  33% {
+    transform: translate(2px, 0);
+  }
+  66% {
+    transform: translate(-2px, 0);
+  }
+  100% {
+    transform: translate(0);
+  }
+}
+
+@keyframes glitch-2 {
+  0% {
+    transform: translate(0);
+  }
+  33% {
+    transform: translate(-2px, 0);
+  }
+  66% {
+    transform: translate(2px, 0);
+  }
+  100% {
+    transform: translate(0);
+  }
+}
+
+/* Static state (1 enemy) */
+.monster-countdown.static {
+  color: #ff0000;
+  border-color: #ff0000;
+  background-color: rgba(40, 0, 0, 0.95);
+  animation: static 0.1s infinite;
+  text-shadow: 
+    0 0 20px #ff0000,
+    0 0 40px #ff0000,
+    0 0 60px #ff0000;
+  font-family: monospace;
+  letter-spacing: -1px;
+  overflow: hidden;
+}
+
+@keyframes static {
+  0% {
+    opacity: 0.8;
+    filter: saturate(1.5) contrast(1.2);
+    transform: scale(1);
+  }
+  10% {
+    opacity: 1;
+    filter: saturate(2) contrast(1.5);
+    transform: scale(1.02);
+  }
+  20% {
+    opacity: 0.7;
+    filter: saturate(1) contrast(1);
+    transform: scale(0.98);
+  }
+  30% {
+    opacity: 0.9;
+    filter: saturate(1.8) contrast(1.3);
+    transform: scale(1.01);
+  }
+  40% {
+    opacity: 0.85;
+    filter: saturate(1.2) contrast(1.1);
+    transform: scale(0.99);
+  }
+  50% {
+    opacity: 1;
+    filter: saturate(2.2) contrast(1.6);
+    transform: scale(1.03);
+  }
+  60% {
+    opacity: 0.6;
+    filter: saturate(0.8) contrast(0.9);
+    transform: scale(0.97);
+  }
+  70% {
+    opacity: 0.95;
+    filter: saturate(1.7) contrast(1.4);
+    transform: scale(1);
+  }
+  80% {
+    opacity: 0.75;
+    filter: saturate(1.3) contrast(1.2);
+    transform: scale(1.01);
+  }
+  90% {
+    opacity: 1;
+    filter: saturate(2) contrast(1.5);
+    transform: scale(0.99);
+  }
+  100% {
+    opacity: 0.8;
+    filter: saturate(1.5) contrast(1.2);
+    transform: scale(1);
+  }
+}
+
+/* Hidden state (0 enemies) */
+.monster-countdown.hidden {
+  opacity: 0;
+  transform: scale(0);
+  animation: fadeOut 0.5s ease-out;
+}
+
+@keyframes fadeOut {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0);
+  }
+}
+
+/* Whisper text overlay */
+.whisper-text {
+  position: absolute;
+  top: 70px;
+  right: 0;
+  background-color: rgba(0, 0, 0, 0.9);
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 8px 12px;
+  color: #888;
+  font-size: 12px;
+  font-style: italic;
+  animation: whisper 3s ease-in-out;
+  text-align: center;
+  white-space: nowrap;
+}
+
+@keyframes whisper {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  80% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+/* CRT-style scanlines for additional retro effect */
+.monster-countdown.flicker::before,
+.monster-countdown.glitch::before,
+.monster-countdown.static::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(transparent 50%, rgba(0, 255, 0, 0.03) 50%);
+  background-size: 100% 4px;
+  pointer-events: none;
+  z-index: 1;
+}

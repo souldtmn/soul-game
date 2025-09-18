@@ -1,3 +1,6 @@
+/* Import Monster Countdown Styles */
+@import './styles/MonsterCountdown.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

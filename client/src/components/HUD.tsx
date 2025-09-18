@@ -1,6 +1,7 @@
 import { usePlayer } from "../lib/stores/usePlayer";
 import { useSouls } from "../lib/stores/useSouls";
 import { useCombat } from "../lib/stores/useCombat";
+import MonsterCountdown from "./MonsterCountdown";
 
 export default function HUD() {
   const { health, maxHealth } = usePlayer();
@@ -8,15 +9,19 @@ export default function HUD() {
   const { isPlayerAttacking, attackTimer } = useCombat();
 
   return (
-    <div style={{
-      position: 'absolute',
-      top: 20,
-      left: 20,
-      right: 20,
-      zIndex: 1000,
-      pointerEvents: 'none',
-      fontFamily: 'Inter, sans-serif',
-    }}>
+    <>
+      {/* Monster Countdown - Top Right Corner */}
+      <MonsterCountdown />
+      
+      <div style={{
+        position: 'absolute',
+        top: 20,
+        left: 20,
+        right: 20,
+        zIndex: 1000,
+        pointerEvents: 'none',
+        fontFamily: 'Inter, sans-serif',
+      }}>
       {/* Health Bar */}
       <div style={{
         backgroundColor: 'rgba(0, 0, 0, 0.8)',
@@ -101,5 +106,6 @@ export default function HUD() {
         <div>E / Enter - Interact</div>
       </div>
     </div>
+    </>
   );
 }
