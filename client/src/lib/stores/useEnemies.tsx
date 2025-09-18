@@ -19,13 +19,22 @@ interface EnemiesState {
   removeEnemy: (id: string) => void;
   updateEnemy: (id: string, updates: Partial<Enemy>) => void;
   clearEnemies: () => void;
+  reset: () => void; // Complete reset for area transitions
 }
 
 export const useEnemies = create<EnemiesState>((set, get) => ({
   enemies: [],
   
   addEnemy: (enemy) => {
-    set({ enemies: [...get().enemies, enemy] });
+    const { enemies } = get();
+    
+    // Guard against duplicate IDs
+    if (enemies.find(e => e.id === enemy.id)) {
+      console.warn(`⚠️ Duplicate enemy ID attempted: ${enemy.id}`);
+      return;
+    }
+    
+    set({ enemies: [...enemies, enemy] });
     console.log(`Enemy added: ${enemy.id}`);
   },
   
@@ -34,14 +43,20 @@ export const useEnemies = create<EnemiesState>((set, get) => ({
     const enemyToRemove = enemies.find(e => e.id === id);
     
     if (enemyToRemove) {
-      // Create soul at enemy position
+      // Extract area from enemy ID (format: Area_enemyX)
+      const areaParts = id.split('_');
+      const currentArea = areaParts.length > 1 ? areaParts[0] : 'Vale'; // fallback to Vale
+      
+      // Create soul at enemy position with globally unique area-prefixed ID
       const { addSoul } = useSouls.getState();
       addSoul({
-        id: `soul_${id}_${Date.now()}`,
+        id: `${currentArea}_soul_${id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         position: enemyToRemove.position.clone(),
         collected: false,
         value: enemyToRemove.type === 'strong' ? 15 : 10
       });
+      
+      console.log(`✨ Soul created: ${currentArea}_soul_${id} (from enemy ${id})`);
     }
     
     set({ enemies: enemies.filter(e => e.id !== id) });
@@ -57,6 +72,11 @@ export const useEnemies = create<EnemiesState>((set, get) => ({
   },
   
   clearEnemies: () => {
+    set({ enemies: [] });
+  },
+  
+  reset: () => {
+    console.log("🔄 useEnemies: Complete reset for area transition");
     set({ enemies: [] });
   },
 }));

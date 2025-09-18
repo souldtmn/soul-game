@@ -10,7 +10,8 @@ export default function BossIntro({ onComplete }: BossIntroProps) {
   const [currentStage, setCurrentStage] = useState(0);
   const [fadeIn, setFadeIn] = useState(false);
 
-  const bossIntroSequence = [
+  // Create sequence once on mount to avoid dependency issues
+  const [bossIntroSequence] = useState([
     {
       text: "Chains snap.",
       duration: 2000,
@@ -39,33 +40,45 @@ export default function BossIntro({ onComplete }: BossIntroProps) {
       text: "Something approaches...",
       duration: 3000,
     }
-  ];
+  ]);
 
+  // Mount effect - run sequence once
   useEffect(() => {
-    console.log(`=== BOSS INTRODUCTION SEQUENCE ===`);
+    console.log(`=== BOSS INTRODUCTION SEQUENCE START ===`);
     console.log(`Area: ${area} | Dust: ${dust} souls | Ash: ${ash} | Corruption: ${corruption}`);
+    console.log(`🎯 Boss unlocked! Starting introduction sequence...`);
     
     setFadeIn(true);
     
-    const advanceStage = () => {
-      if (currentStage < bossIntroSequence.length - 1) {
+    let stageIndex = 0;
+    
+    const runSequence = () => {
+      if (stageIndex < bossIntroSequence.length - 1) {
         setTimeout(() => {
-          setCurrentStage(prev => prev + 1);
-        }, bossIntroSequence[currentStage].duration);
+          stageIndex++;
+          setCurrentStage(stageIndex);
+          runSequence(); // Recurse to next stage
+        }, bossIntroSequence[stageIndex].duration);
       } else {
-        // End of sequence
+        // Final stage - complete sequence
         setTimeout(() => {
-          console.log("Boss introduction complete - returning to cycle");
+          console.log("✅ Boss introduction COMPLETE - triggering area transition");
+          console.log(`🔄 Calling onComplete() for area transition from ${area}`);
           onComplete();
-        }, bossIntroSequence[currentStage].duration);
+        }, bossIntroSequence[stageIndex].duration);
       }
     };
+    
+    // Start sequence after brief delay
+    const startTimer = setTimeout(runSequence, 100);
+    
+    return () => {
+      clearTimeout(startTimer);
+      console.log("⚠️ BossIntro unmounted - sequence may be interrupted");
+    };
+  }, []); // Empty dependency array - run once on mount
 
-    const timer = setTimeout(advanceStage, 100);
-    return () => clearTimeout(timer);
-  }, [currentStage, area, dust, ash, corruption, onComplete]);
-
-  const currentMessage = bossIntroSequence[currentStage];
+  const currentMessage = bossIntroSequence[currentStage] || { text: "Loading...", duration: 1000 };
   const progressPercent = ((currentStage + 1) / bossIntroSequence.length) * 100;
 
   return (

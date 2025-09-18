@@ -30,7 +30,7 @@ const controls = [
 ];
 
 function App() {
-  const { bossUnlocked, resetGenocide, corruption } = useGenocide();
+  const { bossUnlocked, resetGenocide, transitionToNextArea, corruption } = useGenocide();
   const [showBossIntro, setShowBossIntro] = useState(false);
 
   // Handle boss unlock trigger
@@ -43,9 +43,9 @@ function App() {
 
   // Handle boss intro completion
   const handleBossIntroComplete = () => {
-    console.log("=== BOSS INTRO COMPLETE - RESETTING CYCLE ===");
+    console.log("=== BOSS INTRO COMPLETE - TRANSITIONING TO NEXT AREA ===");
     setShowBossIntro(false);
-    resetGenocide(); // Reset for next cycle
+    transitionToNextArea(); // Advance to next area or complete the game
   };
 
   return (

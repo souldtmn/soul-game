@@ -52,18 +52,12 @@ export default function Combat() {
             
             if (newHealth <= 0) {
               // Enemy defeated - handle death sequence
-              console.log(`Enemy ${enemy.id} defeated in Combat.tsx!`);
+              console.log(`🎯 Enemy ${enemy.id} defeated in Combat.tsx!`);
               
-              // Create soul at enemy position before removal
-              addSoul({
-                id: `soul_${enemy.id}_${Date.now()}`,
-                position: enemy.position.clone(),
-                collected: false,
-                value: enemy.type === 'strong' ? 15 : 10
-              });
-              
-              // Remove enemy and trigger Phase 2 systems
+              // Remove enemy (this will create soul with area-prefixed ID in useEnemies.tsx)
               removeEnemy(enemy.id);
+              
+              // Trigger Phase 2 systems
               incrementKillCount(); // This triggers Phase 2 genocide tracking
               playHit();
               

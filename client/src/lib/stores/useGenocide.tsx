@@ -10,6 +10,24 @@ interface WhisperMessage {
   timestamp: number;
 }
 
+interface AreaConfig {
+  id: AreaId;
+  name: string;
+  enemyCount: number;
+  theme: {
+    name: string;
+    colorPrimary: string;
+    colorSecondary: string;
+    corruptionColor: string;
+  };
+  whispers: {
+    early: string[];
+    mid: string[];
+    late: string[];
+    death: string[];
+  };
+}
+
 interface GenocideState {
   // Core tracking systems
   killCount: number; // Remaining enemies in current area
@@ -21,6 +39,10 @@ interface GenocideState {
   dust: number; // Total lifetime kills (lore/achievements)
   corruption: number; // Death/revival count (affects gameplay)
   area: AreaId; // Current area progression
+  
+  // Area progression tracking
+  areasCompleted: AreaId[]; // Areas that have been completed
+  totalAreasCompleted: number; // Count of completed areas
   
   // Whisper and UI systems
   activeWhispers: WhisperMessage[];
@@ -34,28 +56,124 @@ interface GenocideState {
   addWhisper: (text: string, intensity: number) => void;
   removeWhisper: (id: string) => void;
   clearWhispers: () => void;
-  resetArea: (area: AreaId, enemyCount: number) => void;
+  resetArea: (area: AreaId, enemyCount?: number) => void;
+  transitionToNextArea: () => void; // Progress to next area
   resetGenocide: () => void;
   hardReset: () => void; // Complete game reset
+  getCurrentAreaConfig: () => AreaConfig;
+  getNextArea: () => AreaId | null;
 }
 
-// Watcher's Escalating Whisper Tiers - Phase 2 Implementation
-const WHISPER_TIERS = {
-  early: [ // 10+ enemies left
-    "keep going...",
-    "another one...",
-    "closer."
-  ],
-  mid: [ // 3-9 enemies left
-    "we're almost there.",
-    "don't stop.",
-    "more."
-  ],
-  late: [ // 1-2 enemies left
-    "ONLY ONE REMAINS",
-    "ENOUGH.",
-    "you don't live — you only burn."
-  ]
+// Area Configurations - Three-area progression system
+const AREA_CONFIGS: Record<AreaId, AreaConfig> = {
+  Vale: {
+    id: 'Vale',
+    name: 'Hollow Vale',
+    enemyCount: 14,
+    theme: {
+      name: 'Forest→Barren Decay',
+      colorPrimary: '#e17055',
+      colorSecondary: '#74b9ff',
+      corruptionColor: '#d63031',
+    },
+    whispers: {
+      early: [
+        "keep going...",
+        "another one...",
+        "closer.",
+        "the forest weeps."
+      ],
+      mid: [
+        "we're almost there.",
+        "don't stop.",
+        "more.",
+        "hear them falling."
+      ],
+      late: [
+        "ONLY ONE REMAINS",
+        "ENOUGH.",
+        "you don't live — you only burn.",
+        "THE VALE GOES SILENT."
+      ],
+      death: [
+        "you failed them.",
+        "the earth drinks your shame.",
+        "even the trees turn away."
+      ]
+    }
+  },
+  Crypt: {
+    id: 'Crypt',
+    name: 'Shattered Crypt',
+    enemyCount: 21,
+    theme: {
+      name: 'Ice→Frost→Void',
+      colorPrimary: '#74b9ff',
+      colorSecondary: '#a29bfe',
+      corruptionColor: '#6c5ce7',
+    },
+    whispers: {
+      early: [
+        "the ice cracks...",
+        "frozen screams.",
+        "deeper.",
+        "cold consumes all."
+      ],
+      mid: [
+        "frost spreads.",
+        "the void calls.",
+        "shatter them.",
+        "ice and bone."
+      ],
+      late: [
+        "ETERNAL WINTER COMES",
+        "FREEZE THEIR SOULS",
+        "THE VOID OPENS.",
+        "ALL WILL BE ICE."
+      ],
+      death: [
+        "you shatter like glass.",
+        "frozen in failure.",
+        "the cold claims you."
+      ]
+    }
+  },
+  Abyss: {
+    id: 'Abyss',
+    name: 'Abyss Below',
+    enemyCount: 7,
+    theme: {
+      name: 'Fire→Ash→Darkness',
+      colorPrimary: '#fd79a8',
+      colorSecondary: '#e84393',
+      corruptionColor: '#2d3436',
+    },
+    whispers: {
+      early: [
+        "burn them all.",
+        "ash and shadow.",
+        "the final descent.",
+        "darkness rises."
+      ],
+      mid: [
+        "flames dance.",
+        "turn them to ash.",
+        "the abyss opens.",
+        "nothing remains."
+      ],
+      late: [
+        "BURN EVERYTHING",
+        "ASH TO ASH",
+        "THE ABYSS CALLS.",
+        "ALL IS DARKNESS."
+      ],
+      death: [
+        "you burn in your failure.",
+        "consumed by the void.",
+        "the abyss takes you."
+      ]
+    }
+  }
 };
 
 // Helper function to pick random whisper from tier
@@ -64,8 +182,8 @@ const pickRandomWhisper = (tier: string[]): string => {
 };
 
 export const useGenocide = create<GenocideState>((set, get) => ({
-  // Core tracking - updated for Phase 2
-  killCount: 14, // Start with full count, decrement as enemies are defeated
+  // Core tracking - updated for area system
+  killCount: 14, // Start with Vale's count
   totalEnemiesRequired: 14,
   currentThreshold: 'baseline',
   
@@ -75,6 +193,10 @@ export const useGenocide = create<GenocideState>((set, get) => ({
   corruption: 0, // Death/revival count (0-3+)
   area: 'Vale' as AreaId, // Current area
   
+  // Area progression tracking
+  areasCompleted: [],
+  totalAreasCompleted: 0,
+  
   // UI and state
   activeWhispers: [],
   genocideComplete: false,
@@ -83,6 +205,7 @@ export const useGenocide = create<GenocideState>((set, get) => ({
   
   incrementKillCount: (ashReward = 10) => {
     const { killCount, dust, ash, area } = get();
+    const areaConfig = AREA_CONFIGS[area];
     
     // Award currency and increment counters
     const newAsh = ash + ashReward;
@@ -90,24 +213,28 @@ export const useGenocide = create<GenocideState>((set, get) => ({
     const remainingEnemies = Math.max(0, killCount - 1);
     
     console.log(`=== KILL REGISTERED ===`);
-    console.log(`Area: ${area} | Ash +${ashReward} (${newAsh} total) | Dust: ${newDust} lifetime kills`);
-    console.log(`Enemies remaining: ${remainingEnemies}`);
+    console.log(`Area: ${area} (${areaConfig.name}) | Ash +${ashReward} (${newAsh} total) | Dust: ${newDust} lifetime kills`);
+    console.log(`Enemies remaining: ${remainingEnemies}/${areaConfig.enemyCount}`);
     
-    // Determine whisper tier and intensity based on remaining enemies
+    // Determine whisper tier and intensity based on remaining enemies and area thresholds
     let whisperTier: string[] | null = null;
     let newThreshold: GenocideThreshold = 'baseline';
     let intensity = 0.3;
     
-    if (remainingEnemies >= 10) {
-      whisperTier = WHISPER_TIERS.early;
+    // Adjust thresholds based on area enemy count
+    const earlyThreshold = Math.floor(areaConfig.enemyCount * 0.7); // 70% remaining
+    const midThreshold = Math.floor(areaConfig.enemyCount * 0.3);   // 30% remaining
+    
+    if (remainingEnemies >= earlyThreshold) {
+      whisperTier = areaConfig.whispers.early;
       newThreshold = 'early';
       intensity = 0.3;
-    } else if (remainingEnemies >= 3) {
-      whisperTier = WHISPER_TIERS.mid;
+    } else if (remainingEnemies >= midThreshold) {
+      whisperTier = areaConfig.whispers.mid;
       newThreshold = 'mid';
       intensity = 0.6;
     } else if (remainingEnemies >= 1) {
-      whisperTier = WHISPER_TIERS.late;
+      whisperTier = areaConfig.whispers.late;
       newThreshold = 'late';
       intensity = 0.9;
     } else if (remainingEnemies === 0) {
@@ -142,20 +269,17 @@ export const useGenocide = create<GenocideState>((set, get) => ({
   
   incrementDeath: () => {
     const { corruption, area } = get();
+    const areaConfig = AREA_CONFIGS[area];
     const newCorruption = corruption + 1;
     
     console.log(`=== PLAYER DEATH RECORDED ===`);
-    console.log(`Area: ${area} | Corruption increased: ${newCorruption}`);
+    console.log(`Area: ${area} (${areaConfig.name}) | Corruption increased: ${newCorruption}`);
     console.log(`Corruption effects: ${newCorruption >= 1 ? 'Visual distortion' : ''} ${newCorruption >= 2 ? 'Timing penalties' : ''} ${newCorruption >= 3 ? 'Severe corruption' : ''}`);
     
-    // Add whisper for death
-    if (newCorruption === 1) {
-      get().addWhisper("you failed them.", 0.7);
-    } else if (newCorruption === 2) {
-      get().addWhisper("again... and again...", 0.8);
-    } else if (newCorruption >= 3) {
-      get().addWhisper("you are hollow.", 0.9);
-    }
+    // Add area-specific death whisper
+    const deathWhisper = pickRandomWhisper(areaConfig.whispers.death);
+    get().addWhisper(deathWhisper, 0.7 + Math.min(newCorruption * 0.1, 0.2));
+    console.log(`Death whisper (${area}): "${deathWhisper}"`);
     
     set({ corruption: newCorruption });
   },
@@ -189,18 +313,92 @@ export const useGenocide = create<GenocideState>((set, get) => ({
     set({ activeWhispers: [] });
   },
   
-  resetArea: (area: AreaId, enemyCount: number) => {
+  resetArea: (area: AreaId, enemyCount?: number) => {
+    const areaConfig = AREA_CONFIGS[area];
+    const enemies = enemyCount || areaConfig.enemyCount;
+    
     console.log(`=== AREA TRANSITION ===`);
-    console.log(`New area: ${area} with ${enemyCount} enemies to eliminate`);
+    console.log(`New area: ${area} (${areaConfig.name}) with ${enemies} enemies to eliminate`);
     set({
       area,
-      killCount: enemyCount,
-      totalEnemiesRequired: enemyCount,
+      killCount: enemies,
+      totalEnemiesRequired: enemies,
       currentThreshold: 'baseline',
       genocideComplete: false,
       bossUnlocked: false,
       uiCorruptionLevel: 0
     });
+  },
+
+  transitionToNextArea: () => {
+    const { area, areasCompleted } = get();
+    const nextArea = get().getNextArea();
+    
+    if (nextArea) {
+      const currentAreaConfig = AREA_CONFIGS[area];
+      const nextAreaConfig = AREA_CONFIGS[nextArea];
+      
+      console.log(`=== AREA COMPLETION & TRANSITION ===`);
+      console.log(`${area} (${currentAreaConfig.name}) COMPLETED!`);
+      console.log(`Transitioning to ${nextArea} (${nextAreaConfig.name})`);
+      console.log(`Target enemy count for ${nextArea}: ${nextAreaConfig.enemyCount}`);
+      
+      // ATOMIC STATE TRANSITION: Clear all arrays and reset counters
+      const { useEnemies } = require('./useEnemies');
+      const { useSouls } = require('./useSouls');
+      
+      // Clear enemies and souls arrays atomically
+      useEnemies.getState().reset();
+      useSouls.getState().reset();
+      console.log("✅ Enemies and souls arrays cleared for area transition");
+      
+      // Mark current area as completed
+      const newAreasCompleted = [...areasCompleted, area];
+      
+      // ATOMIC GENOCIDE STATE UPDATE
+      set({
+        area: nextArea,
+        killCount: nextAreaConfig.enemyCount, // Reset to full enemy count for new area
+        totalEnemiesRequired: nextAreaConfig.enemyCount,
+        areasCompleted: newAreasCompleted,
+        totalAreasCompleted: newAreasCompleted.length,
+        currentThreshold: 'baseline',
+        genocideComplete: false,
+        bossUnlocked: false,
+        uiCorruptionLevel: 0
+      });
+      
+      console.log(`✅ Area transition complete: ${area} → ${nextArea}`);
+      console.log(`✅ killCount reset to ${nextAreaConfig.enemyCount} for ${nextArea}`);
+      console.log(`✅ bossUnlocked reset to false`);
+      console.log(`✅ Areas completed: ${newAreasCompleted.length}/3 (${newAreasCompleted.join(', ')})`);
+      
+      // Add transition whisper
+      get().addWhisper(`Entering ${nextAreaConfig.name}...`, 0.8);
+      
+      // Log expected next behavior
+      console.log(`Expected: Room component should respawn ${nextAreaConfig.enemyCount} enemies for ${nextArea}`);
+    } else {
+      console.log(`=== FINAL AREA COMPLETED ===`);
+      console.log("All areas have been consumed. The cycle ends.");
+      console.log("🎯 GAME COMPLETE: Vale → Crypt → Abyss progression finished");
+      get().addWhisper("All is ash. All is void.", 1.0);
+    }
+  },
+
+  getCurrentAreaConfig: () => {
+    return AREA_CONFIGS[get().area];
+  },
+
+  getNextArea: (): AreaId | null => {
+    const { area } = get();
+    const areaProgression: AreaId[] = ['Vale', 'Crypt', 'Abyss'];
+    const currentIndex = areaProgression.indexOf(area);
+    
+    if (currentIndex < areaProgression.length - 1) {
+      return areaProgression[currentIndex + 1];
+    }
+    return null; // No more areas
   },
   
   resetGenocide: () => {
