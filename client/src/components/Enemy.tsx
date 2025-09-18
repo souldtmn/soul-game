@@ -5,6 +5,7 @@ import { usePlayer } from "../lib/stores/usePlayer";
 import { useEnemies } from "../lib/stores/useEnemies";
 import { useCombat } from "../lib/stores/useCombat";
 import { useAudio } from "../lib/stores/useAudio";
+import { useGenocide } from "../lib/stores/useGenocide";
 import { checkCollision } from "../lib/collision";
 import { ENEMY_SPEED, ENEMY_ATTACK_RANGE } from "../lib/constants";
 
@@ -32,6 +33,7 @@ export default function Enemy({ enemy }: EnemyProps) {
     exitCombat 
   } = useCombat();
   const { playHit } = useAudio();
+  const { incrementKillCount } = useGenocide();
 
   const [moveDirection] = useState(() => new THREE.Vector3());
   const [combatInitiated, setCombatInitiated] = useState(false);
@@ -77,8 +79,9 @@ export default function Enemy({ enemy }: EnemyProps) {
         const newHealth = enemy.health - 25;
         
         if (newHealth <= 0) {
-          // Enemy defeated - exit combat
+          // Enemy defeated - exit combat and increment genocide counter
           removeEnemy(enemy.id);
+          incrementKillCount(); // Track genocide progress
           playHit();
           console.log(`Enemy ${enemy.id} defeated!`);
           exitCombat(true); // Victory

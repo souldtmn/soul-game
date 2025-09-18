@@ -64,9 +64,21 @@ export default function Player() {
     }
 
     // Handle attack (only during combat)
+    // Manual attack if keys are pressed
     if (controls.attack && combatPhase === 'in_combat') {
       startAttack();
       console.log("Player attempting attack!");
+    }
+    
+    // Auto-attack during combat for testing genocide system
+    if (combatPhase === 'in_combat') {
+      const currentTime = state.clock.elapsedTime;
+      // Attack every 1.5 seconds automatically
+      if (currentTime - lastAttackTime >= 1.5) {
+        startAttack();
+        setLastAttackTime(currentTime);
+        console.log("Player auto-attacking!");
+      }
     }
     
     // Handle defend (only during combat)

@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { usePlayer } from "./usePlayer";
 
 export type CombatPhase = 'overworld' | 'entering_combat' | 'in_combat' | 'exiting_combat';
 export type CombatSubPhase = 'normal' | 'timing' | 'defending';
@@ -83,6 +84,13 @@ export const useCombat = create<CombatState>((set, get) => ({
     
     // Transition back to overworld after a brief delay
     setTimeout(() => {
+      // Reset player health if defeated (not victory)
+      if (!victory) {
+        const { resetPlayer } = usePlayer.getState();
+        resetPlayer();
+        console.log('Player health reset after defeat');
+      }
+      
       set({
         combatPhase: 'overworld',
         currentEnemy: null,
