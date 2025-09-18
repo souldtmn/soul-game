@@ -1,16 +1,36 @@
 import { create } from "zustand";
 
+export type CombatPhase = 'overworld' | 'entering_combat' | 'in_combat' | 'exiting_combat';
+export type CombatSubPhase = 'normal' | 'timing' | 'defending';
+
+interface Enemy {
+  id: string;
+  position: { x: number; y: number; z: number };
+  health: number;
+  maxHealth: number;
+  type: 'basic' | 'strong';
+}
+
 interface CombatState {
+  // Core combat phase system
+  combatPhase: CombatPhase;
+  combatSubPhase: CombatSubPhase;
+  currentEnemy: Enemy | null;
+  
+  // Player attack system
   isPlayerAttacking: boolean;
   attackTimer: number;
   playerAttackRange: number;
-  combatPhase: 'normal' | 'timing' | 'defending';
   
   // Punch-Out style timing mechanics
   timingWindow: number;
   perfectTiming: boolean;
   
-  // Actions
+  // Phase transition actions
+  initiateCombat: (enemy: Enemy) => void;
+  exitCombat: (victory: boolean) => void;
+  
+  // Combat actions
   startAttack: () => void;
   endAttack: () => void;
   updateAttackTimer: (delta: number) => void;
@@ -20,26 +40,73 @@ interface CombatState {
 }
 
 export const useCombat = create<CombatState>((set, get) => ({
+  // Combat phase state
+  combatPhase: 'overworld',
+  combatSubPhase: 'normal',
+  currentEnemy: null,
+  
+  // Player attack system
   isPlayerAttacking: false,
   attackTimer: 0,
   playerAttackRange: 2.5,
-  combatPhase: 'normal',
+  
+  // Punch-Out style timing mechanics
   timingWindow: 0.3, // 300ms window for perfect timing
   perfectTiming: false,
   
-  startAttack: () => {
+  // Phase transition functions
+  initiateCombat: (enemy: Enemy) => {
+    console.log(`Initiating combat with enemy ${enemy.id}`);
     set({
-      isPlayerAttacking: true,
-      attackTimer: 0.5, // Attack lasts 500ms
-      combatPhase: 'timing'
+      combatPhase: 'entering_combat',
+      currentEnemy: enemy,
+      combatSubPhase: 'normal'
     });
+    
+    // Transition to in_combat after a brief delay
+    setTimeout(() => {
+      set({ combatPhase: 'in_combat' });
+      console.log('Entered combat mode');
+    }, 1000);
+  },
+  
+  exitCombat: (victory: boolean) => {
+    console.log(`Exiting combat, victory: ${victory}`);
+    set({
+      combatPhase: 'exiting_combat',
+      combatSubPhase: 'normal'
+    });
+    
+    // Transition back to overworld after a brief delay
+    setTimeout(() => {
+      set({
+        combatPhase: 'overworld',
+        currentEnemy: null,
+        isPlayerAttacking: false,
+        attackTimer: 0,
+        perfectTiming: false
+      });
+      console.log('Returned to overworld');
+    }, 1500);
+  },
+  
+  // Combat action functions
+  startAttack: () => {
+    const { combatPhase } = get();
+    if (combatPhase === 'in_combat') {
+      set({
+        isPlayerAttacking: true,
+        attackTimer: 0.5, // Attack lasts 500ms
+        combatSubPhase: 'timing'
+      });
+    }
   },
   
   endAttack: () => {
     set({
       isPlayerAttacking: false,
       attackTimer: 0,
-      combatPhase: 'normal',
+      combatSubPhase: 'normal',
       perfectTiming: false
     });
   },
@@ -53,11 +120,14 @@ export const useCombat = create<CombatState>((set, get) => ({
   },
   
   startDefend: () => {
-    set({ combatPhase: 'defending' });
+    const { combatPhase } = get();
+    if (combatPhase === 'in_combat') {
+      set({ combatSubPhase: 'defending' });
+    }
   },
   
   endDefend: () => {
-    set({ combatPhase: 'normal' });
+    set({ combatSubPhase: 'normal' });
   },
   
   checkTiming: (inputTime) => {
