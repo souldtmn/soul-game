@@ -20,11 +20,15 @@ export default function Combat() {
   const { playSuccess } = useAudio();
 
   useFrame((state, delta) => {
-    // Handle attack timer
-    if (isPlayerAttacking && attackTimer > 0) {
-      // Attack is active, timer handled in store
-    } else if (isPlayerAttacking && attackTimer <= 0) {
-      endAttack();
+    // Update attack timer
+    if (isPlayerAttacking) {
+      const { updateAttackTimer } = useCombat.getState();
+      updateAttackTimer(delta);
+      
+      // End attack when timer reaches 0
+      if (attackTimer <= 0) {
+        endAttack();
+      }
     }
   });
 

@@ -67,8 +67,11 @@ export default function Enemy({ enemy }: EnemyProps) {
     if (distanceToPlayer <= ENEMY_ATTACK_RANGE && 
         state.clock.elapsedTime - enemy.lastAttackTime > 2) {
       // Enemy attacks player
+      const { takeDamage } = usePlayer.getState();
+      const damage = enemy.type === 'strong' ? 20 : 15;
+      takeDamage(damage);
       updateEnemy(enemy.id, { lastAttackTime: state.clock.elapsedTime });
-      console.log(`Enemy ${enemy.id} attacks player!`);
+      console.log(`Enemy ${enemy.id} attacks player for ${damage} damage!`);
     }
   });
 

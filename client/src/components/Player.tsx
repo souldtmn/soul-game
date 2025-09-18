@@ -20,7 +20,7 @@ export default function Player() {
   const playerRef = useRef<THREE.Mesh>(null);
   const [, getControls] = useKeyboardControls<Controls>();
   const { camera } = useThree();
-  const { position, setPosition, health, isInvulnerable } = usePlayer();
+  const { position, setPosition, health, isInvulnerable, updateInvulnerabilityTimer } = usePlayer();
   const { startAttack, isAttacking } = useCombat();
   
   const [lastAttackTime, setLastAttackTime] = useState(0);
@@ -69,6 +69,9 @@ export default function Player() {
       setLastAttackTime(state.clock.elapsedTime);
       console.log("Player attacking!");
     }
+
+    // Update invulnerability timer
+    updateInvulnerabilityTimer(delta);
 
     // Update camera to follow player
     const targetCameraPosition = new THREE.Vector3(
