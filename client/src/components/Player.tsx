@@ -63,21 +63,16 @@ export default function Player() {
       playerRef.current.position.copy(newPosition);
     }
 
-    // Handle attack (only during combat)
-    // Manual attack if keys are pressed
+    // Handle attack (only during combat) - REQUIRES PLAYER INPUT!
     if (controls.attack && combatPhase === 'in_combat') {
-      startAttack();
-      console.log("Player attempting attack!");
-    }
-    
-    // Auto-attack during combat for testing genocide system
-    if (combatPhase === 'in_combat') {
       const currentTime = state.clock.elapsedTime;
-      // Attack every 1.5 seconds automatically
-      if (currentTime - lastAttackTime >= 1.5) {
+      // Prevent spam clicking - cooldown system
+      if (currentTime - lastAttackTime >= 0.8) {
         startAttack();
         setLastAttackTime(currentTime);
-        console.log("Player auto-attacking!");
+        console.log("💥 Player attacks with skill!");
+      } else {
+        console.log("⏱️ Attack on cooldown - timing matters!");
       }
     }
     

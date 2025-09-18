@@ -76,18 +76,25 @@ export default function Enemy({ enemy }: EnemyProps) {
     if (combatPhase === 'in_combat' && currentEnemy?.id === enemy.id) {
       // Combat.tsx now handles all damage application, Enemy.tsx only handles enemy attacks
       
-      // Enemy attack logic (only in combat mode)
-      if (state.clock.elapsedTime - enemy.lastAttackTime > 3) {
-        const { takeDamage } = usePlayer.getState();
-        const damage = enemy.type === 'strong' ? 20 : 15;
+      // Enemy attack logic (only in combat mode) - More balanced
+      if (state.clock.elapsedTime - enemy.lastAttackTime > 4) {
+        const { takeDamage, health } = usePlayer.getState();
+        const { combatSubPhase } = useCombat.getState();
+        
+        // Reduced damage if player is defending
+        const baseDamage = enemy.type === 'strong' ? 15 : 10;
+        const isDefending = combatSubPhase === 'defending';
+        const damage = isDefending ? Math.floor(baseDamage * 0.5) : baseDamage;
+        
         takeDamage(damage);
         updateEnemy(enemy.id, { lastAttackTime: state.clock.elapsedTime });
-        console.log(`Enemy ${enemy.id} attacks player for ${damage} damage in combat mode!`);
+        
+        const defenseStatus = isDefending ? "🛡️ (blocked!)" : "";
+        console.log(`👹 Enemy ${enemy.id} attacks for ${damage} damage ${defenseStatus}`);
         
         // Check if player is defeated
-        const { health } = usePlayer.getState();
-        if (health <= 0) {
-          console.log('Player defeated!');
+        if (health - damage <= 0) {
+          console.log('💀 Player defeated - need more skill!');
           
           // Track death for corruption system
           const { incrementDeath } = useGenocide.getState();

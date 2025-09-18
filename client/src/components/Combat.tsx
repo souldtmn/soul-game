@@ -44,15 +44,19 @@ export default function Combat() {
           
           // Apply damage if within range (only once per attack)
           if (distanceToEnemy <= playerAttackRange) {
-            const damage = 25;
+            const baseDamage = 35;
+            // Add critical hit chance for skilled timing
+            const isCritical = Math.random() < 0.20;
+            const damage = isCritical ? Math.floor(baseDamage * 1.5) : baseDamage;
             const newHealth = enemy.health - damage;
             
             damageApplied.current = true; // Prevent multiple hits per attack
-            console.log(`Hit detection successful! Enemy ${enemy.id} takes ${damage} damage`);
+            const hitType = isCritical ? "💥 CRITICAL HIT!" : "⚔️ Hit";
+            console.log(`${hitType} Enemy ${enemy.id} takes ${damage} damage`);
             
             if (newHealth <= 0) {
               // Enemy defeated - handle death sequence
-              console.log(`🎯 Enemy ${enemy.id} defeated in Combat.tsx!`);
+              console.log(`🏆 Enemy ${enemy.id} defeated with skill!`);
               
               // Remove enemy (this will create soul with area-prefixed ID in useEnemies.tsx)
               removeEnemy(enemy.id);
@@ -67,7 +71,7 @@ export default function Combat() {
               // Apply damage and continue combat
               updateEnemy(enemy.id, { health: newHealth });
               playHit();
-              console.log(`Enemy ${enemy.id} took damage! Health: ${newHealth}`);
+              console.log(`Enemy ${enemy.id} health: ${newHealth}/${enemy.maxHealth}`);
             }
           }
         }

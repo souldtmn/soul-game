@@ -53,12 +53,12 @@ export const useCombat = create<CombatState>((set, get) => ({
   combatSubPhase: 'normal',
   currentEnemy: null,
   
-  // Player attack system
+  // Player attack system - SKILL-BASED
   isPlayerAttacking: false,
   attackTimer: 0,
   attackCooldown: 0,
   playerAttackRange: 2.5,
-  playerAttackDamage: 25,
+  playerAttackDamage: 35, // Higher damage for skillful attacks
   
   // Punch-Out style timing mechanics
   timingWindow: 0.3, // 300ms window for perfect timing (adjusted by corruption)
@@ -112,11 +112,11 @@ export const useCombat = create<CombatState>((set, get) => ({
   startAttack: () => {
     const { combatPhase, attackCooldown } = get();
     if (combatPhase === 'in_combat' && attackCooldown <= 0) {
-      console.log('Player starts attack!');
+      console.log('🗡️ Player executes skillful attack!');
       set({
         isPlayerAttacking: true,
-        attackTimer: 0.5, // Attack lasts 500ms
-        attackCooldown: 1.0, // 1 second cooldown
+        attackTimer: 0.4, // Quick attack - 400ms
+        attackCooldown: 0.8, // Shorter cooldown for responsive combat
         combatSubPhase: 'timing'
       });
     }
