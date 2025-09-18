@@ -4,6 +4,7 @@ import { KeyboardControls } from "@react-three/drei";
 import "@fontsource/inter";
 import Game from "./components/Game";
 import HUD from "./components/HUD";
+import CombatUI from "./components/CombatUI";
 
 // Define control keys for the game
 enum Controls {
@@ -95,6 +96,7 @@ function App() {
         </Canvas>
         
         <HUD />
+        <CombatUI />
       </KeyboardControls>
     </div>
   );
