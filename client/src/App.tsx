@@ -39,9 +39,38 @@ function App() {
             far: 1000
           }}
           gl={{
-            antialias: true,
-            powerPreference: "default"
+            antialias: false,
+            powerPreference: "default",
+            alpha: true,
+            premultipliedAlpha: true,
+            preserveDrawingBuffer: false,
+            failIfMajorPerformanceCaveat: false
           }}
+          onCreated={(state) => {
+            console.log('WebGL context created successfully');
+            if (state.gl && state.gl.getParameter) {
+              console.log('WebGL version:', state.gl.getParameter(state.gl.VERSION));
+            }
+          }}
+          fallback={
+            <div style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              color: 'white',
+              textAlign: 'center',
+              fontFamily: 'Inter, sans-serif'
+            }}>
+              <h2>WebGL Not Available</h2>
+              <p>This game requires WebGL to run. Please try:</p>
+              <ul style={{ textAlign: 'left', margin: '0 auto', display: 'inline-block' }}>
+                <li>Updating your browser</li>
+                <li>Enabling hardware acceleration</li>
+                <li>Checking WebGL support at webglreport.com</li>
+              </ul>
+            </div>
+          }
         >
           <color attach="background" args={["#1a1a2e"]} />
           
