@@ -4,6 +4,7 @@ import { useKeyboardControls } from "@react-three/drei";
 import * as THREE from "three";
 import { usePlayer } from "../lib/stores/usePlayer";
 import { useCombat } from "../lib/stores/useCombat";
+import { useTelegraph } from "../lib/stores/useTelegraph";
 import { checkCollision } from "../lib/collision";
 import { PLAYER_SPEED, ROOM_BOUNDS } from "../lib/constants";
 
@@ -22,8 +23,10 @@ export default function Player() {
   const { camera } = useThree();
   const { position, setPosition, health, isInvulnerable, updateInvulnerabilityTimer } = usePlayer();
   const { startAttack, startDefend, endDefend, isPlayerAttacking, combatPhase } = useCombat();
+  const { setDefending, attemptEvade } = useTelegraph();
   
   const [lastAttackTime, setLastAttackTime] = useState(0);
+  const [lastEvadeTime, setLastEvadeTime] = useState(0);
   
   useFrame((state, delta) => {
     if (!playerRef.current) return;
@@ -76,13 +79,33 @@ export default function Player() {
       }
     }
     
-    // Handle defend (only during combat)
-    if (controls.defend && combatPhase === 'in_combat') {
+    // Handle defend (only during combat) - Telegraph System
+    const isDefendPressed = controls.defend && combatPhase === 'in_combat';
+    if (isDefendPressed) {
       startDefend();
-      console.log("Player defending!");
+      setDefending(true);
+      console.log("🛡️ Player defending with telegraph!");
     } else if (!controls.defend) {
       // Stop defending when key is released
       endDefend();
+      setDefending(false);
+    }
+    
+    // Handle evasion input (A/D keys during combat)
+    if (combatPhase === 'in_combat') {
+      const currentTime = state.clock.elapsedTime;
+      
+      // Left evade (A key)
+      if (controls.leftward && currentTime - lastEvadeTime >= 0.3) {
+        attemptEvade('left');
+        setLastEvadeTime(currentTime);
+      }
+      
+      // Right evade (D key)
+      if (controls.rightward && currentTime - lastEvadeTime >= 0.3) {
+        attemptEvade('right');
+        setLastEvadeTime(currentTime);
+      }
     }
 
     // Update invulnerability timer

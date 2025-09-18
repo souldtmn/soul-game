@@ -5,6 +5,11 @@ import GameWorld from "./GameWorld";
 import Player from "./Player";
 import Combat from "./Combat";
 import MusicCorruption from "./MusicCorruption";
+import TelegraphWindupBar from "./TelegraphWindupBar";
+import TelegraphEvadeArrows from "./TelegraphEvadeArrows";
+import TelegraphDefendRing from "./TelegraphDefendRing";
+import TelegraphSuccessToast from "./TelegraphSuccessToast";
+import TelegraphInputHints from "./TelegraphInputHints";
 
 // This component only renders 3D content inside the Canvas
 export default function Game() {
@@ -34,12 +39,18 @@ export default function Game() {
     return null;
   }
 
-  // Only render 3D content - UI overlays are handled by CombatUI component
+  // Render 3D content with Telegraph UI overlays
   return (
     <>
       <GameWorld />
       <Player />
       <Combat />
+      
+      {/* Telegraph Combat System UI */}
+      <TelegraphEvadeArrows />
+      <TelegraphDefendRing />
+      <TelegraphSuccessToast />
+      <TelegraphInputHints />
     </>
   );
 }
