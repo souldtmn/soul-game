@@ -4,6 +4,7 @@ import { useAudio } from "../lib/stores/useAudio";
 import GameWorld from "./GameWorld";
 import Player from "./Player";
 import Combat from "./Combat";
+import MusicCorruption from "./MusicCorruption";
 
 // This component only renders 3D content inside the Canvas
 export default function Game() {
