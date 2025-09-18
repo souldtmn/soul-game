@@ -88,9 +88,7 @@ function App() {
           }}
           onCreated={(state) => {
             console.log('WebGL context created successfully');
-            if (state.gl && state.gl.getParameter) {
-              console.log('WebGL version:', state.gl.getParameter(state.gl.VERSION));
-            }
+            console.log('WebGL renderer:', state.gl);
           }}
           fallback={
             <div style={{
