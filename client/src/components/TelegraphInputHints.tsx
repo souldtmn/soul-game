@@ -13,8 +13,8 @@ export default function TelegraphInputHints() {
   
   return (
     <Html
-      position={[0, -4, 0]}
       center
+      transform={false}
       style={{ 
         pointerEvents: 'none',
         position: 'fixed',

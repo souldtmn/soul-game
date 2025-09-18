@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { useTelegraph } from "../lib/stores/useTelegraph";
@@ -8,6 +8,13 @@ export default function TelegraphDefendRing() {
   const ringRef = useRef<THREE.Mesh>(null);
   const { showDefendRing, isDefending, phase } = useTelegraph();
   const { position: playerPosition } = usePlayer();
+  
+  // Use a stable position reference to prevent jitter
+  const stablePosition = useMemo(() => ({ 
+    x: playerPosition.x, 
+    y: playerPosition.y, 
+    z: playerPosition.z 
+  }), [Math.floor(playerPosition.x * 4) / 4, Math.floor(playerPosition.y * 4) / 4, Math.floor(playerPosition.z * 4) / 4]);
   
   useFrame((state, delta) => {
     if (!ringRef.current) return;

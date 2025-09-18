@@ -36,9 +36,16 @@ export default function TelegraphEvadeArrows() {
   
   return (
     <Html
-      position={[playerPosition.x, playerPosition.y + 1, playerPosition.z]}
       center
-      style={{ pointerEvents: 'none' }}
+      transform={false}
+      style={{ 
+        pointerEvents: 'none',
+        position: 'fixed',
+        top: '40%',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        zIndex: 900,
+      }}
     >
       <div 
         className="evade-arrows"
