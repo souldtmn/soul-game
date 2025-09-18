@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import * as THREE from "three";
+import { useSouls } from "./useSouls";
 
 interface Enemy {
   id: string;
@@ -34,7 +35,7 @@ export const useEnemies = create<EnemiesState>((set, get) => ({
     
     if (enemyToRemove) {
       // Create soul at enemy position
-      const { addSoul } = require('./useSouls').useSouls.getState();
+      const { addSoul } = useSouls.getState();
       addSoul({
         id: `soul_${id}_${Date.now()}`,
         position: enemyToRemove.position.clone(),
