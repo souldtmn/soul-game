@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { usePlayer } from "./usePlayer";
+import { useGenocide } from "./useGenocide";
 
 export type CombatPhase = 'overworld' | 'entering_combat' | 'in_combat' | 'exiting_combat';
 export type CombatSubPhase = 'normal' | 'timing' | 'defending';
@@ -40,6 +41,10 @@ interface CombatState {
   startDefend: () => void;
   endDefend: () => void;
   checkTiming: (inputTime: number) => boolean;
+  
+  // Corruption-based timing adjustment
+  updateTimingWindow: () => void;
+  getCorruptionAdjustedWindow: () => number;
 }
 
 export const useCombat = create<CombatState>((set, get) => ({
@@ -56,7 +61,7 @@ export const useCombat = create<CombatState>((set, get) => ({
   playerAttackDamage: 25,
   
   // Punch-Out style timing mechanics
-  timingWindow: 0.3, // 300ms window for perfect timing
+  timingWindow: 0.3, // 300ms window for perfect timing (adjusted by corruption)
   perfectTiming: false,
   
   // Phase transition functions
@@ -155,10 +160,34 @@ export const useCombat = create<CombatState>((set, get) => ({
   },
   
   checkTiming: (inputTime) => {
+    // Update timing window based on corruption before checking
+    get().updateTimingWindow();
+    
     // Simplified timing check for Punch-Out style mechanics
     const { timingWindow } = get();
     const perfect = Math.abs(inputTime % 1.0) < timingWindow;
     set({ perfectTiming: perfect });
     return perfect;
+  },
+  
+  // Corruption-based timing adjustment functions
+  updateTimingWindow: () => {
+    const adjustedWindow = get().getCorruptionAdjustedWindow();
+    const currentWindow = get().timingWindow;
+    
+    // Only update if there's a meaningful change to avoid excessive updates
+    if (Math.abs(adjustedWindow - currentWindow) > 0.01) {
+      set({ timingWindow: adjustedWindow });
+      console.log(`Timing window adjusted due to corruption: ${adjustedWindow.toFixed(3)}s`);
+    }
+  },
+  
+  getCorruptionAdjustedWindow: () => {
+    const { corruption } = useGenocide.getState();
+    const baseWindow = 0.3;
+    const corruptionPenalty = 0.05 * corruption;
+    const minWindow = 0.1; // Minimum timing window to keep game playable
+    
+    return Math.max(minWindow, baseWindow - corruptionPenalty);
   },
 }));

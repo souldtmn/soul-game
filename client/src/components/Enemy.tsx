@@ -74,24 +74,8 @@ export default function Enemy({ enemy }: EnemyProps) {
 
     // Only allow combat actions during in_combat phase
     if (combatPhase === 'in_combat' && currentEnemy?.id === enemy.id) {
-      // Check if player is attacking this enemy
-      if (isPlayerAttacking && distanceToPlayer <= playerAttackRange) {
-        const newHealth = enemy.health - 25;
-        
-        if (newHealth <= 0) {
-          // Enemy defeated - exit combat and increment genocide counter
-          removeEnemy(enemy.id);
-          incrementKillCount(); // Track genocide progress
-          playHit();
-          console.log(`Enemy ${enemy.id} defeated!`);
-          exitCombat(true); // Victory
-        } else {
-          updateEnemy(enemy.id, { health: newHealth });
-          playHit();
-          console.log(`Enemy ${enemy.id} took damage! Health: ${newHealth}`);
-        }
-      }
-
+      // Combat.tsx now handles all damage application, Enemy.tsx only handles enemy attacks
+      
       // Enemy attack logic (only in combat mode)
       if (state.clock.elapsedTime - enemy.lastAttackTime > 3) {
         const { takeDamage } = usePlayer.getState();
@@ -104,6 +88,11 @@ export default function Enemy({ enemy }: EnemyProps) {
         const { health } = usePlayer.getState();
         if (health <= 0) {
           console.log('Player defeated!');
+          
+          // Track death for corruption system
+          const { incrementDeath } = useGenocide.getState();
+          incrementDeath();
+          
           exitCombat(false); // Defeat
         }
       }

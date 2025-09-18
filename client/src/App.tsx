@@ -1,10 +1,12 @@
 import { Canvas } from "@react-three/fiber";
-import { Suspense } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { KeyboardControls } from "@react-three/drei";
 import "@fontsource/inter";
 import Game from "./components/Game";
 import HUD from "./components/HUD";
 import CombatUI from "./components/CombatUI";
+import BossIntro from "./components/BossIntro";
+import { useGenocide } from "./lib/stores/useGenocide";
 
 // Define control keys for the game
 enum Controls {
@@ -28,8 +30,45 @@ const controls = [
 ];
 
 function App() {
+  const { bossUnlocked, resetGenocide, corruption } = useGenocide();
+  const [showBossIntro, setShowBossIntro] = useState(false);
+
+  // Handle boss unlock trigger
+  useEffect(() => {
+    if (bossUnlocked && !showBossIntro) {
+      console.log("=== BOSS TRIGGER ACTIVATED ===");
+      setShowBossIntro(true);
+    }
+  }, [bossUnlocked, showBossIntro]);
+
+  // Handle boss intro completion
+  const handleBossIntroComplete = () => {
+    console.log("=== BOSS INTRO COMPLETE - RESETTING CYCLE ===");
+    setShowBossIntro(false);
+    resetGenocide(); // Reset for next cycle
+  };
+
   return (
-    <div style={{ width: '100vw', height: '100vh', position: 'relative', overflow: 'hidden' }}>
+    <>
+      {/* Boss Introduction Overlay */}
+      {showBossIntro && (
+        <BossIntro onComplete={handleBossIntroComplete} />
+      )}
+      
+      <div style={{ 
+        width: '100vw', 
+        height: '100vh', 
+        position: 'relative', 
+        overflow: 'hidden',
+        // Apply corruption visual effects to entire application
+        filter: corruption > 0 ? (
+          `hue-rotate(${corruption * 20}deg) ` +
+          `contrast(${1 + corruption * 0.15}) ` +
+          `brightness(${1 - corruption * 0.1}) ` +
+          `saturate(${1 + corruption * 0.2})`
+        ) : 'none',
+        transition: 'filter 0.5s ease',
+      }}>
       <KeyboardControls map={controls}>
         <Canvas
           shadows
@@ -98,7 +137,8 @@ function App() {
         <HUD />
         <CombatUI />
       </KeyboardControls>
-    </div>
+      </div>
+    </>
   );
 }
 

@@ -9,7 +9,7 @@ export default function HUD() {
   const { health, maxHealth } = usePlayer();
   const { totalSouls, soulCount } = useSouls();
   const { isPlayerAttacking, attackTimer } = useCombat();
-  const { killCount, totalEnemiesRequired, currentThreshold, uiCorruptionLevel, genocideComplete } = useGenocide();
+  const { killCount, totalEnemiesRequired, currentThreshold, uiCorruptionLevel, genocideComplete, ash, dust, corruption, area } = useGenocide();
 
   // Apply corruption effects to UI elements
   const getCorruptedStyle = (baseColor: string, corruption: number) => {
@@ -72,64 +72,81 @@ export default function HUD() {
         </div>
       </div>
 
-      {/* Soul Counter */}
+      {/* SOUL System Display - Watcher's Format: Area: Vale | Left: 3 | Ash: 150 | Dust: 47 | Corruption: 0 */}
       <div style={{
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-        border: getCorruptedBorder('2px solid #e17055', uiCorruptionLevel),
-        borderRadius: '8px',
-        padding: '10px',
+        backgroundColor: `rgba(0, 0, 0, ${0.85 + uiCorruptionLevel * 0.15})`,
+        border: getCorruptedBorder('3px solid #e17055', uiCorruptionLevel),
+        borderRadius: '12px',
+        padding: '15px',
         marginBottom: '10px',
         color: '#fff',
-        filter: uiCorruptionLevel > 0.5 ? `hue-rotate(${uiCorruptionLevel * 45}deg)` : 'none',
-      }}>
-        <div style={{ fontSize: '14px', marginBottom: '5px' }}>SOULS</div>
-        <div style={{ fontSize: '18px', color: getCorruptedStyle('#e17055', uiCorruptionLevel), fontWeight: 'bold' }}>
-          {soulCount} (Total: {totalSouls})
-        </div>
-      </div>
-
-      {/* Kill Counter - Genocide Progress */}
-      <div style={{
-        backgroundColor: `rgba(0, 0, 0, ${0.8 + uiCorruptionLevel * 0.2})`,
-        border: getCorruptedBorder('2px solid #6c757d', uiCorruptionLevel),
-        borderRadius: '8px',
-        padding: '10px',
-        marginBottom: '10px',
-        color: uiCorruptionLevel > 0.6 ? '#ff6b6b' : '#fff',
-        opacity: killCount > 0 ? 1 : 0.3, // Subtle until kills start
-        transform: genocideComplete ? 'scale(1.1)' : 'scale(1)',
+        filter: uiCorruptionLevel > 0.5 ? `hue-rotate(${uiCorruptionLevel * 60}deg)` : 'none',
+        transform: genocideComplete ? 'scale(1.05)' : 'scale(1)',
         transition: 'all 0.3s ease',
+        boxShadow: uiCorruptionLevel > 0.7 ? '0 0 30px rgba(225, 112, 85, 0.4)' : '0 0 15px rgba(0, 0, 0, 0.5)',
       }}>
         <div style={{ 
-          fontSize: '14px', 
-          marginBottom: '5px',
+          fontSize: '16px', 
+          marginBottom: '8px',
+          color: getCorruptedStyle('#e17055', uiCorruptionLevel),
+          fontWeight: 'bold',
           textTransform: uiCorruptionLevel > 0.8 ? 'uppercase' : 'none',
-          letterSpacing: uiCorruptionLevel > 0.6 ? '2px' : '1px',
+          letterSpacing: uiCorruptionLevel > 0.6 ? '3px' : '2px',
         }}>
-          {genocideComplete ? 'GENOCIDE COMPLETE' : 'ELIMINATION PROGRESS'}
+          {genocideComplete ? 'GENOCIDE COMPLETE' : 'SOUL PROGRESSION'}
         </div>
+        
+        {/* The Watcher's Format */}
         <div style={{ 
           fontSize: '18px', 
-          color: getCorruptedStyle('#6c757d', uiCorruptionLevel), 
-          fontWeight: uiCorruptionLevel > 0.5 ? 'bold' : 'normal',
-          textShadow: uiCorruptionLevel > 0.7 ? '0 0 10px rgba(255, 107, 107, 0.5)' : 'none',
+          color: getCorruptedStyle('#fff', uiCorruptionLevel), 
+          fontWeight: 'bold',
+          textShadow: uiCorruptionLevel > 0.7 ? '0 0 10px rgba(225, 112, 85, 0.6)' : 'none',
+          fontFamily: 'monospace',
+          letterSpacing: '1px',
+          lineHeight: '1.2',
         }}>
-          {killCount} / {totalEnemiesRequired}
+          Area: {area} | Left: {killCount} | Ash: {ash} | Dust: {dust} | Corruption: {corruption}
         </div>
+        
         {currentThreshold !== 'baseline' && (
           <div style={{ 
-            fontSize: '12px', 
-            marginTop: '5px', 
-            color: getCorruptedStyle('#999', uiCorruptionLevel),
+            fontSize: '13px', 
+            marginTop: '8px', 
+            color: getCorruptedStyle('#ccc', uiCorruptionLevel),
             fontStyle: 'italic',
+            textAlign: 'center',
+            opacity: 0.9,
           }}>
-            {currentThreshold === 'early' && 'The hunt begins...'}
-            {currentThreshold === 'mid' && 'Growing stronger...'}
-            {currentThreshold === 'late' && 'Nearly complete...'}
-            {currentThreshold === 'complete' && 'IT IS FINISHED'}
+            {currentThreshold === 'early' && 'The descent begins...'}
+            {currentThreshold === 'mid' && 'Deeper into darkness...'}
+            {currentThreshold === 'late' && 'At the threshold of void...'}
+            {currentThreshold === 'complete' && 'THE VOID CONSUMES ALL'}
           </div>
         )}
       </div>
+      
+      {/* Soul Fragment Counter (Legacy) */}
+      {soulCount > 0 && (
+        <div style={{
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          border: getCorruptedBorder('2px solid #74b9ff', uiCorruptionLevel),
+          borderRadius: '8px',
+          padding: '8px',
+          marginBottom: '10px',
+          color: '#fff',
+          opacity: 0.8,
+        }}>
+          <div style={{ fontSize: '12px', marginBottom: '3px' }}>SOUL FRAGMENTS</div>
+          <div style={{ fontSize: '14px', color: getCorruptedStyle('#74b9ff', uiCorruptionLevel), fontWeight: 'bold' }}>
+            {soulCount} collected (Total: {totalSouls})
+          </div>
+          <div style={{ fontSize: '10px', marginTop: '2px', color: '#999', fontStyle: 'italic' }}>
+            Remnants of the fallen
+          </div>
+        </div>
+      )}
+
 
       {/* Attack Indicator */}
       {isPlayerAttacking && (
