@@ -20,7 +20,9 @@ interface CombatState {
   // Player attack system
   isPlayerAttacking: boolean;
   attackTimer: number;
+  attackCooldown: number;
   playerAttackRange: number;
+  playerAttackDamage: number;
   
   // Punch-Out style timing mechanics
   timingWindow: number;
@@ -48,7 +50,9 @@ export const useCombat = create<CombatState>((set, get) => ({
   // Player attack system
   isPlayerAttacking: false,
   attackTimer: 0,
+  attackCooldown: 0,
   playerAttackRange: 2.5,
+  playerAttackDamage: 25,
   
   // Punch-Out style timing mechanics
   timingWindow: 0.3, // 300ms window for perfect timing
@@ -84,6 +88,7 @@ export const useCombat = create<CombatState>((set, get) => ({
         currentEnemy: null,
         isPlayerAttacking: false,
         attackTimer: 0,
+        attackCooldown: 0,
         perfectTiming: false
       });
       console.log('Returned to overworld');
@@ -92,17 +97,20 @@ export const useCombat = create<CombatState>((set, get) => ({
   
   // Combat action functions
   startAttack: () => {
-    const { combatPhase } = get();
-    if (combatPhase === 'in_combat') {
+    const { combatPhase, attackCooldown } = get();
+    if (combatPhase === 'in_combat' && attackCooldown <= 0) {
+      console.log('Player starts attack!');
       set({
         isPlayerAttacking: true,
         attackTimer: 0.5, // Attack lasts 500ms
+        attackCooldown: 1.0, // 1 second cooldown
         combatSubPhase: 'timing'
       });
     }
   },
   
   endAttack: () => {
+    console.log('Player attack ended');
     set({
       isPlayerAttacking: false,
       attackTimer: 0,
@@ -112,10 +120,18 @@ export const useCombat = create<CombatState>((set, get) => ({
   },
   
   updateAttackTimer: (delta) => {
-    const { attackTimer, isPlayerAttacking } = get();
+    const { attackTimer, attackCooldown, isPlayerAttacking } = get();
+    
+    // Update attack timer
     if (isPlayerAttacking && attackTimer > 0) {
       const newTimer = attackTimer - delta;
       set({ attackTimer: Math.max(0, newTimer) });
+    }
+    
+    // Update cooldown timer
+    if (attackCooldown > 0) {
+      const newCooldown = attackCooldown - delta;
+      set({ attackCooldown: Math.max(0, newCooldown) });
     }
   },
   

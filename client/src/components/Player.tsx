@@ -21,7 +21,7 @@ export default function Player() {
   const [, getControls] = useKeyboardControls<Controls>();
   const { camera } = useThree();
   const { position, setPosition, health, isInvulnerable, updateInvulnerabilityTimer } = usePlayer();
-  const { startAttack, isAttacking } = useCombat();
+  const { startAttack, startDefend, endDefend, isPlayerAttacking, combatPhase } = useCombat();
   
   const [lastAttackTime, setLastAttackTime] = useState(0);
   
@@ -63,11 +63,19 @@ export default function Player() {
       playerRef.current.position.copy(newPosition);
     }
 
-    // Handle attack
-    if (controls.attack && state.clock.elapsedTime - lastAttackTime > 0.5) {
+    // Handle attack (only during combat)
+    if (controls.attack && combatPhase === 'in_combat') {
       startAttack();
-      setLastAttackTime(state.clock.elapsedTime);
-      console.log("Player attacking!");
+      console.log("Player attempting attack!");
+    }
+    
+    // Handle defend (only during combat)
+    if (controls.defend && combatPhase === 'in_combat') {
+      startDefend();
+      console.log("Player defending!");
+    } else if (!controls.defend) {
+      // Stop defending when key is released
+      endDefend();
     }
 
     // Update invulnerability timer
@@ -85,8 +93,8 @@ export default function Player() {
   });
 
   // Player appearance changes based on state
-  const playerColor = isInvulnerable ? "#ff6b6b" : (isAttacking ? "#4ecdc4" : "#45b7d1");
-  const playerScale = isAttacking ? 1.2 : 1.0;
+  const playerColor = isInvulnerable ? "#ff6b6b" : (isPlayerAttacking ? "#4ecdc4" : "#45b7d1");
+  const playerScale = isPlayerAttacking ? 1.2 : 1.0;
 
   return (
     <mesh
