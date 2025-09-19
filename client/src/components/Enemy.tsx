@@ -120,7 +120,7 @@ export default function Enemy({ enemy }: EnemyProps) {
           enemy.type,
           playerStats.armor,
           result.guarded,
-          result.guarded ? 0.5 : 0, // 50% block reduction
+          result.guarded ? result.blockReduction : 0, // Use skill-based block reduction
           result.evaded,
           corruption
         );

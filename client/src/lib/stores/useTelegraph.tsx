@@ -36,7 +36,7 @@ interface TelegraphState {
   startWindup: (enemyId: string, duration?: number, direction?: TelegraphDirection) => void;
   updateWindup: (deltaTime: number) => void;
   triggerImminent: () => void;
-  resolveImpact: () => { evaded: boolean; guarded: boolean; damage: number };
+  resolveImpact: () => { evaded: boolean; guarded: boolean; damage: number; blockReduction: number; timingQuality: string; perfectEvade: boolean; perfectBlock: boolean };
   endTelegraph: () => void;
   
   // Input actions
@@ -142,36 +142,59 @@ export const useTelegraph = create<TelegraphState>((set, get) => ({
     const state = get();
     console.log('💥 Telegraph impact - resolving evade/defend...');
     
-    // Calculate timing for evade
+    // Enhanced timing calculation for skill-based mechanics
     const frameDiff = Math.abs(state.currentFrame - state.impactFrame);
-    const perfectTiming = frameDiff <= state.evadeWindow;
+    const perfectWindow = 2; // ±2 frames for perfect timing (33ms at 60fps)
+    const goodWindow = state.evadeWindow; // ±4 frames for good timing (67ms)
     
-    // Check evade conditions
-    const evaded = (state.isDodgingLeft || state.isDodgingRight) && perfectTiming;
+    const isPerfectTiming = frameDiff <= perfectWindow;
+    const isGoodTiming = frameDiff <= goodWindow;
+    
+    // Enhanced evade detection
+    const isEvadeInput = state.isDodgingLeft || state.isDodgingRight;
     const correctDirection = state.direction === null || 
       (state.direction === 'left' && state.isDodgingLeft) ||
       (state.direction === 'right' && state.isDodgingRight);
     
-    const finalEvaded = evaded && correctDirection;
+    const finalEvaded = isEvadeInput && isGoodTiming && correctDirection;
+    const perfectEvade = isEvadeInput && isPerfectTiming && correctDirection;
     
-    // Check defense
-    const guarded = state.isDefending;
+    // Enhanced block detection with timing-based effectiveness
+    const isBlockInput = state.isDefending;
+    let blockReduction = 0;
+    let blockQuality = '';
     
-    // Calculate damage (preserve enemy type balance)
-    const baseDamage = 10; // Default, will be overridden by enemy type
-    let damage = baseDamage;
-    
-    if (finalEvaded) {
-      damage = 0;
-      get().showToast('Perfect Evade!', '#9be9a8');
-      get().incrementSuccessfulInteraction();
-    } else if (guarded) {
-      damage = Math.ceil(baseDamage * 0.5);
-      get().showToast('Guarded!', '#79c0ff');
+    if (isBlockInput) {
+      if (isPerfectTiming) {
+        blockReduction = 0.8; // 80% damage reduction for perfect block
+        blockQuality = 'PERFECT';
+        get().showToast('Perfect Block!', '#ffd700');
+      } else if (isGoodTiming) {
+        blockReduction = 0.6; // 60% damage reduction for good block  
+        blockQuality = 'GOOD';
+        get().showToast('Good Block!', '#79c0ff');
+      } else {
+        blockReduction = 0.4; // 40% damage reduction for late block
+        blockQuality = 'LATE';
+        get().showToast('Late Block', '#ff9f40');
+      }
       get().incrementSuccessfulInteraction();
     }
     
-    console.log(`🎯 Impact resolved: evaded=${finalEvaded}, guarded=${guarded}, damage=${damage}`);
+    // Skill-based feedback messages
+    if (finalEvaded) {
+      if (perfectEvade) {
+        get().showToast('Perfect Evade!', '#9be9a8');
+      } else {
+        get().showToast('Good Evade!', '#7dd3fc');
+      }
+      get().incrementSuccessfulInteraction();
+    }
+    
+    // Enhanced result logging with timing details
+    const timingInfo = isPerfectTiming ? 'PERFECT' : isGoodTiming ? 'GOOD' : 'LATE';
+    console.log(`🎯 Impact resolved: evaded=${finalEvaded}, blocked=${isBlockInput}, timing=${timingInfo}, blockReduction=${blockReduction.toFixed(1)}`);
+    console.log(`⏱️ Frame timing: ${frameDiff}f diff (perfect≤${perfectWindow}f, good≤${goodWindow}f)`);
     
     set({ 
       phase: 'resolving',
@@ -182,7 +205,16 @@ export const useTelegraph = create<TelegraphState>((set, get) => ({
     // Auto-end after resolution
     setTimeout(() => get().endTelegraph(), 300);
     
-    return { evaded: finalEvaded, guarded, damage };
+    // Return enhanced result data for DamageResolver
+    return { 
+      evaded: finalEvaded, 
+      guarded: isBlockInput,
+      blockReduction,
+      timingQuality: timingInfo,
+      perfectEvade,
+      perfectBlock: isBlockInput && isPerfectTiming,
+      damage: 10 // Legacy field, actual damage calculated by DamageResolver
+    };
   },
   
   endTelegraph: () => {
