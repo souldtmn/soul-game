@@ -46,7 +46,7 @@ export default function Player() {
     
     // Skip gameplay updates during hitstop (but allow camera effects)
     if (hitstopActive) {
-      console.log("⏸️ Gameplay paused - hitstop active");
+      // Gameplay paused during hitstop - no logging to prevent spam
     } else {
       // Handle movement (only when not in hitstop)
       if (controls.forward) {
@@ -101,7 +101,7 @@ export default function Player() {
       if (isDefendPressed) {
         startDefend();
         setDefending(true);
-        console.log("🛡️ Player defending with telegraph!");
+        // Defending active - no per-frame logging to prevent spam
       } else if (!controls.defend) {
         // Stop defending when key is released
         endDefend();
@@ -146,7 +146,8 @@ export default function Player() {
       targetCameraPosition.y += shakeY;
       targetCameraPosition.z += shakeZ;
       
-      console.log(`📹 Camera shake: intensity ${cameraShakeIntensity.toFixed(2)}`);
+      // Reduced logging to prevent spam
+      // console.log(`📹 Camera shake: intensity ${cameraShakeIntensity.toFixed(2)}`);
     }
     
     camera.position.lerp(targetCameraPosition, 2 * delta);

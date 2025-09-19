@@ -364,13 +364,15 @@ export const useTelegraph = create<TelegraphState>((set, get) => ({
     
     // Update hitstop
     if (state.hitstopActive && currentTime >= state.hitstopEndTime) {
-      console.log(`⏸️ Hitstop ended`);
+      // Reduced logging to prevent spam
+      // console.log(`⏸️ Hitstop ended`);
       set({ hitstopActive: false, hitstopDuration: 0, hitstopEndTime: 0 });
     }
     
     // Update camera shake
     if (state.cameraShakeActive && currentTime >= state.cameraShakeEndTime) {
-      console.log(`📹 Camera shake ended`);
+      // Reduced logging to prevent spam
+      // console.log(`📹 Camera shake ended`);
       set({ 
         cameraShakeActive: false, 
         cameraShakeIntensity: 0, 
