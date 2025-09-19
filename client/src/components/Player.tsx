@@ -23,7 +23,14 @@ export default function Player() {
   const { camera } = useThree();
   const { position, setPosition, health, isInvulnerable, updateInvulnerabilityTimer } = usePlayer();
   const { startAttack, startDefend, endDefend, isPlayerAttacking, combatPhase } = useCombat();
-  const { setDefending, attemptEvade } = useTelegraph();
+  const { 
+    setDefending, 
+    attemptEvade, 
+    updateEffects, 
+    cameraShakeActive, 
+    cameraShakeIntensity, 
+    hitstopActive 
+  } = useTelegraph();
   
   const [lastAttackTime, setLastAttackTime] = useState(0);
   const [lastEvadeTime, setLastEvadeTime] = useState(0);
@@ -31,21 +38,29 @@ export default function Player() {
   useFrame((state, delta) => {
     if (!playerRef.current) return;
 
+    // Update telegraph effects (hitstop, camera shake)
+    updateEffects(delta);
+
     const controls = getControls();
     const moveVector = new THREE.Vector3();
     
-    // Handle movement
-    if (controls.forward) {
-      moveVector.z -= PLAYER_SPEED * delta;
-    }
-    if (controls.backward) {
-      moveVector.z += PLAYER_SPEED * delta;
-    }
-    if (controls.leftward) {
-      moveVector.x -= PLAYER_SPEED * delta;
-    }
-    if (controls.rightward) {
-      moveVector.x += PLAYER_SPEED * delta;
+    // Skip gameplay updates during hitstop (but allow camera effects)
+    if (hitstopActive) {
+      console.log("⏸️ Gameplay paused - hitstop active");
+    } else {
+      // Handle movement (only when not in hitstop)
+      if (controls.forward) {
+        moveVector.z -= PLAYER_SPEED * delta;
+      }
+      if (controls.backward) {
+        moveVector.z += PLAYER_SPEED * delta;
+      }
+      if (controls.leftward) {
+        moveVector.x -= PLAYER_SPEED * delta;
+      }
+      if (controls.rightward) {
+        moveVector.x += PLAYER_SPEED * delta;
+      }
     }
 
     // Calculate new position
@@ -66,60 +81,80 @@ export default function Player() {
       playerRef.current.position.copy(newPosition);
     }
 
-    // Handle attack (only during combat) - REQUIRES PLAYER INPUT!
-    if (controls.attack && combatPhase === 'in_combat') {
-      const currentTime = state.clock.elapsedTime;
-      // Prevent spam clicking - cooldown system
-      if (currentTime - lastAttackTime >= 0.8) {
-        startAttack();
-        setLastAttackTime(currentTime);
-        console.log("💥 Player attacks with skill!");
-      } else {
-        console.log("⏱️ Attack on cooldown - timing matters!");
-      }
-    }
-    
-    // Handle defend (only during combat) - Telegraph System
-    const isDefendPressed = controls.defend && combatPhase === 'in_combat';
-    if (isDefendPressed) {
-      startDefend();
-      setDefending(true);
-      console.log("🛡️ Player defending with telegraph!");
-    } else if (!controls.defend) {
-      // Stop defending when key is released
-      endDefend();
-      setDefending(false);
-    }
-    
-    // Handle evasion input (A/D keys during combat)
-    if (combatPhase === 'in_combat') {
-      const currentTime = state.clock.elapsedTime;
-      
-      // Left evade (A key)
-      if (controls.leftward && currentTime - lastEvadeTime >= 0.3) {
-        attemptEvade('left');
-        setLastEvadeTime(currentTime);
+    // Handle game actions (only when not in hitstop)
+    if (!hitstopActive) {
+      // Handle attack (only during combat) - REQUIRES PLAYER INPUT!
+      if (controls.attack && combatPhase === 'in_combat') {
+        const currentTime = state.clock.elapsedTime;
+        // Prevent spam clicking - cooldown system
+        if (currentTime - lastAttackTime >= 0.8) {
+          startAttack();
+          setLastAttackTime(currentTime);
+          console.log("💥 Player attacks with skill!");
+        } else {
+          console.log("⏱️ Attack on cooldown - timing matters!");
+        }
       }
       
-      // Right evade (D key)
-      if (controls.rightward && currentTime - lastEvadeTime >= 0.3) {
-        attemptEvade('right');
-        setLastEvadeTime(currentTime);
+      // Handle defend (only during combat) - Telegraph System
+      const isDefendPressed = controls.defend && combatPhase === 'in_combat';
+      if (isDefendPressed) {
+        startDefend();
+        setDefending(true);
+        console.log("🛡️ Player defending with telegraph!");
+      } else if (!controls.defend) {
+        // Stop defending when key is released
+        endDefend();
+        setDefending(false);
       }
+      
+      // Handle evasion input (A/D keys during combat)
+      if (combatPhase === 'in_combat') {
+        const currentTime = state.clock.elapsedTime;
+        
+        // Left evade (A key)
+        if (controls.leftward && currentTime - lastEvadeTime >= 0.3) {
+          attemptEvade('left');
+          setLastEvadeTime(currentTime);
+        }
+        
+        // Right evade (D key)
+        if (controls.rightward && currentTime - lastEvadeTime >= 0.3) {
+          attemptEvade('right');
+          setLastEvadeTime(currentTime);
+        }
+      }
+
+      // Update invulnerability timer
+      updateInvulnerabilityTimer(delta);
     }
 
-    // Update invulnerability timer
-    updateInvulnerabilityTimer(delta);
-
-    // Update camera to follow player
+    // Update camera to follow player with shake effects
     const targetCameraPosition = new THREE.Vector3(
       newPosition.x,
       newPosition.y + 8,
       newPosition.z + 12
     );
     
+    // Apply camera shake if active
+    if (cameraShakeActive) {
+      const shakeX = (Math.random() - 0.5) * cameraShakeIntensity;
+      const shakeY = (Math.random() - 0.5) * cameraShakeIntensity;
+      const shakeZ = (Math.random() - 0.5) * cameraShakeIntensity * 0.5;
+      
+      targetCameraPosition.x += shakeX;
+      targetCameraPosition.y += shakeY;
+      targetCameraPosition.z += shakeZ;
+      
+      console.log(`📹 Camera shake: intensity ${cameraShakeIntensity.toFixed(2)}`);
+    }
+    
     camera.position.lerp(targetCameraPosition, 2 * delta);
-    camera.lookAt(newPosition);
+    camera.lookAt(new THREE.Vector3(
+      newPosition.x + (cameraShakeActive ? (Math.random() - 0.5) * cameraShakeIntensity * 0.3 : 0),
+      newPosition.y + (cameraShakeActive ? (Math.random() - 0.5) * cameraShakeIntensity * 0.3 : 0),
+      newPosition.z + (cameraShakeActive ? (Math.random() - 0.5) * cameraShakeIntensity * 0.3 : 0)
+    ));
   });
 
   // Player appearance changes based on state

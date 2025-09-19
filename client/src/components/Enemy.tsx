@@ -39,7 +39,8 @@ export default function Enemy({ enemy }: EnemyProps) {
     startWindup, 
     updateWindup, 
     resolveImpact, 
-    phase: telegraphPhase 
+    phase: telegraphPhase,
+    hitstopActive 
   } = useTelegraph();
   const { playHit } = useAudio();
   const { incrementKillCount } = useGenocide();
@@ -49,6 +50,11 @@ export default function Enemy({ enemy }: EnemyProps) {
   
   useFrame((state, delta) => {
     if (!enemyRef.current) return;
+
+    // Skip enemy updates during hitstop for global pause effect
+    if (hitstopActive) {
+      return;
+    }
 
     const playerPos = new THREE.Vector3(playerPosition.x, 0, playerPosition.z);
     const enemyPos = new THREE.Vector3(enemy.position.x, 0, enemy.position.z);

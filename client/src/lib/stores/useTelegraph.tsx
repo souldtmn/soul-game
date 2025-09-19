@@ -32,6 +32,15 @@ interface TelegraphState {
   showInputHints: boolean;
   successfulInteractions: number;
   
+  // Phase 3: Impact Feedback state
+  hitstopActive: boolean;
+  hitstopDuration: number; // in milliseconds
+  hitstopEndTime: number;
+  cameraShakeActive: boolean;
+  cameraShakeIntensity: number;
+  cameraShakeEndTime: number;
+  lastImpactType: 'block' | 'evade' | 'hit' | null;
+  
   // Actions
   startWindup: (enemyId: string, duration?: number, direction?: TelegraphDirection) => void;
   updateWindup: (deltaTime: number) => void;
@@ -47,6 +56,11 @@ interface TelegraphState {
   showToast: (message: string, color?: string) => void;
   hideToast: () => void;
   incrementSuccessfulInteraction: () => void;
+  
+  // Phase 3: Impact Feedback actions
+  triggerHitstop: (duration: number) => void;
+  triggerCameraShake: (intensity: number, duration: number) => void;
+  updateEffects: (deltaTime: number) => void;
 }
 
 export const useTelegraph = create<TelegraphState>((set, get) => ({
@@ -77,6 +91,15 @@ export const useTelegraph = create<TelegraphState>((set, get) => ({
   successColor: '#9be9a8',
   showInputHints: true,
   successfulInteractions: 0,
+  
+  // Phase 3: Impact Feedback initial state
+  hitstopActive: false,
+  hitstopDuration: 0,
+  hitstopEndTime: 0,
+  cameraShakeActive: false,
+  cameraShakeIntensity: 0,
+  cameraShakeEndTime: 0,
+  lastImpactType: null,
   
   // Core actions
   startWindup: (enemyId: string, duration = 0.8, direction = null) => {
@@ -169,28 +192,50 @@ export const useTelegraph = create<TelegraphState>((set, get) => ({
         blockReduction = 0.8; // 80% damage reduction for perfect block
         blockQuality = 'PERFECT';
         get().showToast('Perfect Block!', '#ffd700');
+        get().triggerHitstop(200); // 200ms hitstop for perfect block
+        get().triggerCameraShake(1.2, 250); // Strong shake for perfect block
+        set({ lastImpactType: 'block' });
       } else if (isGoodTiming) {
         blockReduction = 0.6; // 60% damage reduction for good block  
         blockQuality = 'GOOD';
         get().showToast('Good Block!', '#79c0ff');
+        get().triggerHitstop(120); // 120ms hitstop for good block
+        get().triggerCameraShake(0.7, 180); // Medium shake for good block
+        set({ lastImpactType: 'block' });
       } else {
         blockReduction = 0.4; // 40% damage reduction for late block
         blockQuality = 'LATE';
         get().showToast('Late Block', '#ff9f40');
+        get().triggerHitstop(60); // 60ms hitstop for late block
+        get().triggerCameraShake(0.3, 120); // Light shake for late block
+        set({ lastImpactType: 'block' });
       }
       get().incrementSuccessfulInteraction();
     }
     
-    // Skill-based feedback messages
+    // Skill-based feedback messages with impact effects
     if (finalEvaded) {
       if (perfectEvade) {
         get().showToast('Perfect Evade!', '#9be9a8');
+        get().triggerHitstop(150); // 150ms hitstop for perfect evade
+        get().triggerCameraShake(0.8, 200); // Medium shake for perfect evade
+        set({ lastImpactType: 'evade' });
       } else {
         get().showToast('Good Evade!', '#7dd3fc');
+        get().triggerHitstop(100); // 100ms hitstop for good evade
+        get().triggerCameraShake(0.5, 150); // Light shake for good evade
+        set({ lastImpactType: 'evade' });
       }
       get().incrementSuccessfulInteraction();
     }
     
+    // Add hit feedback for plain hits (no block/evade)
+    if (!finalEvaded && !isBlockInput) {
+      get().triggerHitstop(40); // Brief hitstop for hits
+      get().triggerCameraShake(0.4, 120); // Mild shake for hits
+      set({ lastImpactType: 'hit' });
+    }
+
     // Enhanced result logging with timing details
     const timingInfo = isPerfectTiming ? 'PERFECT' : isGoodTiming ? 'GOOD' : 'LATE';
     console.log(`🎯 Impact resolved: evaded=${finalEvaded}, blocked=${isBlockInput}, timing=${timingInfo}, blockReduction=${blockReduction.toFixed(1)}`);
@@ -289,6 +334,48 @@ export const useTelegraph = create<TelegraphState>((set, get) => ({
     // Hide input hints after 3 successful interactions
     if (newCount >= 3) {
       set({ showInputHints: false });
+    }
+  },
+  
+  // Phase 3: Impact Feedback implementations
+  triggerHitstop: (duration: number) => {
+    const currentTime = Date.now();
+    console.log(`⏸️ Hitstop triggered: ${duration}ms`);
+    set({
+      hitstopActive: true,
+      hitstopDuration: duration,
+      hitstopEndTime: currentTime + duration,
+    });
+  },
+  
+  triggerCameraShake: (intensity: number, duration: number) => {
+    const currentTime = Date.now();
+    console.log(`📹 Camera shake triggered: intensity ${intensity.toFixed(2)}, ${duration}ms`);
+    set({
+      cameraShakeActive: true,
+      cameraShakeIntensity: intensity,
+      cameraShakeEndTime: currentTime + duration,
+    });
+  },
+  
+  updateEffects: (deltaTime: number) => {
+    const state = get();
+    const currentTime = Date.now();
+    
+    // Update hitstop
+    if (state.hitstopActive && currentTime >= state.hitstopEndTime) {
+      console.log(`⏸️ Hitstop ended`);
+      set({ hitstopActive: false, hitstopDuration: 0, hitstopEndTime: 0 });
+    }
+    
+    // Update camera shake
+    if (state.cameraShakeActive && currentTime >= state.cameraShakeEndTime) {
+      console.log(`📹 Camera shake ended`);
+      set({ 
+        cameraShakeActive: false, 
+        cameraShakeIntensity: 0, 
+        cameraShakeEndTime: 0 
+      });
     }
   },
 }));
