@@ -6,6 +6,7 @@ import { useEnemies } from "../lib/stores/useEnemies";
 import { useSouls } from "../lib/stores/useSouls";
 import { useAudio } from "../lib/stores/useAudio";
 import { useGenocide } from "../lib/stores/useGenocide";
+import { DamageResolver } from "../lib/systems/DamageResolver";
 import * as THREE from "three";
 
 export default function Combat() {
@@ -44,15 +45,32 @@ export default function Combat() {
           
           // Apply damage if within range (only once per attack)
           if (distanceToEnemy <= playerAttackRange) {
+            console.log(`🗡️ Player attacking ${enemy.id} at range ${distanceToEnemy.toFixed(2)}`);
+            // Use DamageResolver for consistent player attacks
+            const { getStats: getPlayerStats } = usePlayer.getState();
+            const { corruption } = useGenocide.getState();
+            const playerStats = getPlayerStats();
+            
             const baseDamage = 35;
-            // Add critical hit chance for skilled timing
-            const isCritical = Math.random() < 0.20;
-            const damage = isCritical ? Math.floor(baseDamage * 1.5) : baseDamage;
-            const newHealth = enemy.health - damage;
+            const damageResult = DamageResolver.playerAttacksEnemy(
+              baseDamage,
+              playerStats.power,
+              enemy.type === 'strong' ? 0.15 : 0.05, // reasonable enemy armor
+              false, // no blocking for enemies yet
+              0, // no block reduction
+              false, // no evading for enemies
+              corruption,
+              enemy.type, // defender type
+              false // not a counter attack
+            );
+            
+            const newHealth = enemy.health - damageResult.finalDamage;
             
             damageApplied.current = true; // Prevent multiple hits per attack
-            const hitType = isCritical ? "💥 CRITICAL HIT!" : "⚔️ Hit";
-            console.log(`${hitType} Enemy ${enemy.id} takes ${damage} damage`);
+            
+            // Enhanced logging with damage calculation details
+            const statusFlags = damageResult.wasCritical ? '💥 CRITICAL!' : '⚔️';
+            console.log(`${statusFlags} Enemy ${enemy.id} takes ${damageResult.finalDamage} damage`);
             
             if (newHealth <= 0) {
               // Enemy defeated - handle death sequence

@@ -7,6 +7,7 @@ import { useCombat } from "../lib/stores/useCombat";
 import { useTelegraph } from "../lib/stores/useTelegraph";
 import { useAudio } from "../lib/stores/useAudio";
 import { useGenocide } from "../lib/stores/useGenocide";
+import { DamageResolver } from "../lib/systems/DamageResolver";
 import { checkCollision } from "../lib/collision";
 import { ENEMY_SPEED, ENEMY_ATTACK_RANGE } from "../lib/constants";
 import TelegraphWindupBar from "./TelegraphWindupBar";
@@ -108,28 +109,38 @@ export default function Enemy({ enemy }: EnemyProps) {
         console.log('💥 Telegraph impact - resolving damage...');
         const result = resolveImpact();
         
-        // Apply actual damage based on enemy type
+        // Use DamageResolver for consistent damage calculation
+        const { getStats: getPlayerStats } = usePlayer.getState();
+        const { corruption } = useGenocide.getState();
+        const playerStats = getPlayerStats();
+        
         const baseDamage = enemy.type === 'strong' ? 15 : 10;
-        let finalDamage = baseDamage;
+        const damageResult = DamageResolver.enemyAttacksPlayer(
+          baseDamage,
+          enemy.type,
+          playerStats.armor,
+          result.guarded,
+          result.guarded ? 0.5 : 0, // 50% block reduction
+          result.evaded,
+          corruption
+        );
         
-        if (result.evaded) {
-          finalDamage = 0;
-          console.log('🏃 Player successfully evaded telegraph attack!');
-        } else if (result.guarded) {
-          finalDamage = Math.ceil(baseDamage * 0.5);
-          const status = "🛡️ (defended!)";
-          console.log(`👹 Enemy ${enemy.id} hits for ${finalDamage} damage ${status}`);
-        } else {
-          console.log(`👹 Enemy ${enemy.id} hits for ${finalDamage} damage`);
-        }
-        
-        // Apply damage if any
-        if (finalDamage > 0) {
-          const { takeDamage, health } = usePlayer.getState();
-          takeDamage(finalDamage);
+        // Apply calculated damage
+        if (damageResult.finalDamage > 0) {
+          const { takeDamage } = usePlayer.getState();
+          takeDamage(damageResult.finalDamage);
           
-          // Check if player is defeated
-          if (health - finalDamage <= 0) {
+          // Log with detailed damage info
+          const statusFlags = [
+            damageResult.wasCritical ? 'CRIT!' : '',
+            damageResult.wasBlocked ? 'BLOCKED' : '',
+            damageResult.wasEvaded ? 'EVADED' : ''
+          ].filter(Boolean).join(' ');
+          
+          console.log(`👹 Enemy ${enemy.id} hits for ${damageResult.finalDamage} damage ${statusFlags}`);
+          
+          // Check if player is defeated (after takeDamage already applied)
+          if (playerStats.isDead) {
             console.log('💀 Player defeated by telegraph attack!');
             
             // Track death for corruption system
@@ -138,6 +149,10 @@ export default function Enemy({ enemy }: EnemyProps) {
             
             exitCombat(false); // Defeat
           }
+        } else {
+          // Perfect evade or complete block
+          const reason = damageResult.wasEvaded ? 'perfectly evaded' : 'completely blocked';
+          console.log(`🏃 Player ${reason} telegraph attack!`);
         }
       }
     }
