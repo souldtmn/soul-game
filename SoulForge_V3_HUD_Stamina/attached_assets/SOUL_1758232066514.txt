@@ -1,0 +1,180 @@
+⚔️ SOUL: Pyre of Determination
+Game Design Document (Complete Blueprint)
+
+1. Core Philosophy
+    • Not a game, but a trial. Brutal, unforgiving, artistic.
+    • No pacifism, no shortcuts. Genocide is the only path.
+    • Every choice — kill, burn, revive — must feel like sacrifice.
+    • By the end, even victory feels hollow. That emptiness is the art.
+
+2. Gameplay Loop
+    1. Explore hostile, decaying environments.
+    2. Hunt → every monster must die.
+    3. Countdown → visible number of monsters left, becomes distorted as genocide nears.
+    4. Boss → appears only when genocide complete.
+    5. Death → choice between:
+        ◦ Restart (permadeath).
+        ◦ Burn SOUL (on-chain) to revive → costly and corrupting.
+
+3. Currency & Token Integration
+SOUL (on-chain token)
+    • Used for burn-to-revive.
+    • Used for ritual/global events (boss summons, pyre burns).
+    • Manual burns only (pump.fun launch = no auto-tax). Burns verified by sending to burn address 11111111111111111111111111111111.
+Ash / Fragments (in-game)
+    • Earned by killing monsters & finishing areas.
+    • Used for temporary upgrades (weapons, abilities).
+    • Not on-chain → keeps base game free-to-play.
+
+4. Burn-to-Revive Mechanics
+Costs (escalating)
+    • Area 1: 500 → 1000 → 2500 SOUL.
+    • Area 2: 1000 → 2500 → 5000 SOUL.
+    • Area 3: 5000 → 10,000 → 25,000 SOUL.
+    • After 3rd revive → permadeath, restart run.
+Penalties
+    • Reviving permanently corrupts screen, whispers, and endings.
+    • Reviving too much → HUD elements vanish, screen fragments, music drowned by whispers.
+    • Heavy revival leads to corrupted ending: whispers mock, “You don’t live — you only burn.”
+Ritual Burns
+    • Community-wide events: burn totals unlock boss fights, story layers, or cosmetic corruption.
+    • Global whisper/music intensity tied to total burns.
+Leaderboard
+    • Top sacrificers recognized with roles/titles (Watcher, Ashborn, Flamebearer).
+
+5. Countdown Behavior
+Area 1: Hollow Vale
+    • 14–10: Clear white pixel font.
+    • 9–5: Flickers, CRT static.
+    • 4–2: Distorted glyphs.
+    • 1: Unreadable static, whisper: “Only one remains…”.
+    • 0: Counter disappears → silence → boss spawns.
+Area 2: Shattered Crypt
+    • 14–10: Icy blue counter, stable.
+    • 9–6: Freezes, cracks, reforms.
+    • 5–3: Appears in random screen locations.
+    • 1: Full frost overlay, whisper shrieks.
+    • 0: Counter gone → chains snap → boss awakens.
+Area 3: Abyss Below
+    • 13–10: Counter fractured.
+    • 7: Flickers between true number & “0.”
+    • 3: Cycles random numbers rapidly.
+    • 1: Counter replaced with “ENOUGH.”
+    • 0: Screen collapse, whispers scream, boss fight begins.
+
+6. Whispers System
+Progression
+    • Early: Subliminal, barely audible.
+    • Mid: Audible after each kill: “Keep going…”.
+    • Late: Overlapping, distorted voices.
+    • Final stretch: Words crawl visibly across screen edges.
+Burn-Triggered
+    • 1st revive: “Your SOUL burns brighter…”.
+    • 2nd revive: “The Pyre owns you…”.
+    • 3rd revive: “You don’t live — you only burn.”.
+Area-Specific
+    • Vale: Whisper escalation matches countdown.
+    • Crypt: Colder, sharper → “Frozen. Forgotten. Buried.”
+    • Abyss: Layered voices → “It’s already over.” / “SOUL burns, and nothing remains.”
+
+7. Music Design
+Instruments
+    • Piano (detunes over time).
+    • Strings (drone → vibrato → screech).
+    • Percussion (heartbeat → irregular panic → chains).
+    • Noise/static (grows as genocide nears).
+    • Whisper vocals (hidden → dominant).
+Area 1: Hollow Vale
+    • 14–10: Minimal piano + drone.
+    • 9–5: Detuning, irregular percussion.
+    • 4–2: Reversed notes, static pulses.
+    • 1: Pure distortion, collapses to silence.
+    • Boss: Chains as percussion, oppressive drone, whispers hidden.
+Area 2: Shattered Crypt
+    • 14–10: Hollow chimes + drones.
+    • 9–6: Glass cracking rhythm.
+    • 5–3: Frozen heartbeats, static builds.
+    • 1: Fade out → ice crack.
+    • Boss: Metallic clangs, faint choir → silence mid-fight → screaming choir at climax.
+Area 3: Abyss Below
+    • 13–10: Sub-bass hum, faint.
+    • 9–7: Distorted echoes of earlier themes.
+    • 6–3: Static overtakes, percussion becomes glitches.
+    • 1: Silence → faint heartbeat.
+    • Boss:
+        ◦ Phase 1: Deep bass drones.
+        ◦ Phase 2: Chains + static shrieks.
+        ◦ Phase 3: Silence → whispers circle in 3D.
+    • Ending: Single distorted piano note fading endlessly.
+Burn Audio
+    • 1st burn: Track skips, restarts detuned.
+    • 2nd burn: Distortion layers added, percussion speeds up.
+    • 3rd burn: Whispers drown entire soundtrack.
+
+8. Visual Decay
+Environments
+    • Vale: Forest decays → barren wasteland → gray void.
+    • Crypt: Ice walls glitch, faces press out → collapse into darkness.
+    • Abyss: Platforms break → stars collapse → screen fragments into static.
+Revives
+    • 1st: Brief crack flash.
+    • 2nd: Crack stays, glowing faintly.
+    • 3rd: Screen shattered, blurred, static overlay permanent.
+Bosses
+    • Vale: Chains snap in sync with music → silence.
+    • Crypt: Frozen throne shatters → darkness revealed.
+    • Abyss: The screen itself becomes the boss. HUD, visuals, sound stripped away.
+
+9. Level Design
+Area 1: Hollow Vale
+    • Monsters:
+        ◦ Lurkers (10) – weak, whisper triggers.
+        ◦ Ashbeasts (3) – hound packs, real threat.
+        ◦ Watcher Fragment (1) – escalation trigger.
+    • Boss: Wraith of Vale → invisible/visible phases, whisper attacks.
+    • End: Forest drained of life → silence.
+Area 2: Shattered Crypt
+    • Monsters:
+        ◦ Frostwraiths (8) – slow player with frost trails.
+        ◦ Gravehounds (4) – burrow + leap attacks.
+        ◦ Forgotten (2) – frozen humanoids with massive swings.
+    • Boss: Keeper of Silence → silence mid-fight, whispers return at climax.
+    • End: Crypt collapses into abyss.
+Area 3: Abyss Below
+    • Monsters:
+        ◦ Echo Shades (6) – mimic player’s movements.
+        ◦ Ashborn (4) – burning skeletons, red flare.
+        ◦ Watcher’s Husk (2) – whisper directly at player.
+        ◦ Last Remnant (1) – frail figure, triggers collapse.
+    • Boss: The Abyss / The Maw of SOUL → arena collapse, whispers as attacks, silence as weapon.
+    • Endings:
+        ◦ Low revives: Whisper → “You endured.”
+        ◦ High revives: Corrupted ending → “You don’t live — you only burn.”
+        ◦ Failure: Whisper → “…but nobody came.”
+
+10. Technical Roadmap
+v0 (Launch)
+    • Pump.fun token launch.
+    • Raydium pool.
+    • Revoke mint/freeze authorities.
+    • Publish burn wallet + live Pyre counter on site.
+v1 (Prototype)
+    • Browser build.
+    • Core loop: death → wallet burn → verify → revive.
+    • Global counter synced to site.
+v2 (Expansion)
+    • Scaling revive costs.
+    • Run caps.
+    • Cosmetic unlocks via burn totals.
+    • Global whispers/music corruption tied to burns.
+v3 (Content)
+    • Area 2 + Area 3 added.
+    • Leaderboards.
+    • Alternate corrupted endings.
+
+11. Tone & Identity
+    • No comfort. No reset. No mercy.
+    • Reviving = pain, not relief.
+    • Whispers escalate until unbearable.
+    • Environments decay into void.
+    • By the end, the player has nothing left but Determination — and the burn mechanic itself.

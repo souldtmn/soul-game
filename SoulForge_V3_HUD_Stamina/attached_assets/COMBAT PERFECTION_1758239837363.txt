@@ -1,0 +1,356 @@
+Heck yes—let’s harden combat first and clean the screen. Here’s a tight, low-cost plan with plug-in code you can paste when you’re ready.
+
+Phase 1 — Make damage actually matter
+1) Single place that decides damage
+
+Create a central resolver so every hit (enemy → player, player → enemy) goes through the same math.
+
+// DamageResolver.cs
+using UnityEngine;
+
+public static class DamageResolver
+{
+    public struct Context
+    {
+        public float BaseDamage;
+        public float AttackerPower;   // from stats
+        public float DefenderArmor;   // from stats
+        public bool  IsCounter;       // bonus
+        public bool  IsPerfectDodge;  // usually 0 damage
+        public bool  IsBlock;         // reduce damage
+        public float BlockReduction;  // 0.5f = 50%
+        public float CorruptionScale; // 1.0 = none; >1 = more damage as corruption rises
+        public float CritChance;      // optional
+        public float CritMult;        // optional
+        public float HitVariance;     // +/- range, e.g., 0.1 = ±10%
+    }
+
+    public static float Compute(Context c)
+    {
+        if (c.IsPerfectDodge) return 0f;
+
+        float dmg = c.BaseDamage * (1f + c.AttackerPower) * c.CorruptionScale;
+
+        // armor dampening: dmg *= 1 / (1 + armor)
+        dmg *= 1f / (1f + Mathf.Max(0f, c.DefenderArmor));
+
+        if (c.IsCounter) dmg *= 1.25f;
+
+        if (c.IsBlock) dmg *= Mathf.Clamp01(1f - c.BlockReduction);
+
+        // crit (optional)
+        if (Random.value < c.CritChance) dmg *= c.CritMult;
+
+        // variance
+        if (c.HitVariance > 0f)
+        {
+            float v = Random.Range(-c.HitVariance, c.HitVariance);
+            dmg *= (1f + v);
+        }
+        return Mathf.Max(0f, Mathf.Round(dmg));
+    }
+}
+
+2) Minimal stats holder for both sides
+// CombatantStats.cs
+using UnityEngine;
+
+public class CombatantStats : MonoBehaviour
+{
+    public float MaxHP = 100f;
+    public float HP = 100f;
+    public float Power = 0.2f;   // 20%
+    public float Armor = 0.1f;   // mild soak
+
+    public void Take(float amount)
+    {
+        HP = Mathf.Max(0f, HP - amount);
+        // TODO: raise events for UI, VFX, sfx, death
+    }
+}
+
+3) Hook enemy hit events into the resolver
+
+Where your telegraph confirms an enemy hit, do:
+
+void OnEnemyHitPlayer()
+{
+    var player = playerStats; // cached CombatantStats
+    var ctx = new DamageResolver.Context
+    {
+        BaseDamage     = enemyBaseDamage,         // e.g., 12
+        AttackerPower  = enemyStats.Power,
+        DefenderArmor  = player.Armor,
+        IsCounter      = false,
+        IsPerfectDodge = dodge.IsWithinIFrames,
+        IsBlock        = block.IsBlocking,
+        BlockReduction = block.CurrentReduction,   // e.g., 0.5f or 0.8f for perfect
+        CorruptionScale= 1f + corruption.Level * 0.1f,
+        CritChance     = 0f,
+        CritMult       = 1.5f,
+        HitVariance    = 0.05f
+    };
+
+    float dmg = DamageResolver.Compute(ctx);
+    player.Take(dmg);
+
+    impactFX.Play(dmg);       // camera shake + hitstop + particles (Phase 3)
+    combatUI.ToastDamage(dmg);// small “-12” near player HP (Phase 4)
+}
+
+Phase 2 — Block & Dodge that actually work
+A) Blocking with flat + perfect windows
+// BlockSystem.cs
+using UnityEngine;
+
+public class BlockSystem : MonoBehaviour
+{
+    [Header("Block")]
+    public bool IsBlocking { get; private set; }
+    public float CurrentReduction { get; private set; }
+    public float HoldReduction = 0.5f;    // 50% while holding
+    public float PerfectReduction = 0.85f;// 85% on perfect
+    public float PerfectWindow = 0.15f;   // seconds after press
+    float blockPressedTime = -999f;
+
+    void Update()
+    {
+        if (InputBuffer.BlockDown()) // your input layer
+        {
+            IsBlocking = true;
+            blockPressedTime = Time.time;
+        }
+        if (InputBuffer.BlockUp())
+        {
+            IsBlocking = false;
+        }
+
+        bool perfect = IsBlocking && (Time.time - blockPressedTime) <= PerfectWindow;
+        CurrentReduction = perfect ? PerfectReduction : HoldReduction;
+    }
+}
+
+
+Hook this to the telegraph “impact” moment. If player is blocking and within the “perfect” sub-window, you get the higher reduction (and a ring flash + sfx).
+
+B) Dodge with i-frames + perfect dodge
+// DodgeSystem.cs
+using UnityEngine;
+
+public class DodgeSystem : MonoBehaviour
+{
+    public bool IsDodging { get; private set; }
+    public bool IsWithinIFrames { get; private set; }
+
+    [Header("Timing")]
+    public float DodgeDuration = 0.35f;
+    public float IFrameStart = 0.06f;
+    public float IFrameEnd   = 0.26f;
+    public float Cooldown    = 0.35f;
+
+    [Header("Perfect")]
+    public float PerfectWindowCenter = 0.18f; // target the enemy impact
+    public float PerfectWindowSize   = 0.08f; // ± size
+
+    float lastDodgeTime = -999f;
+    float dodgeStart;
+
+    public bool TryDodge()
+    {
+        if (Time.time < lastDodgeTime + Cooldown) return false;
+        IsDodging = true;
+        dodgeStart = Time.time;
+        lastDodgeTime = Time.time;
+        return true;
+    }
+
+    void Update()
+    {
+        if (IsDodging)
+        {
+            float t = Time.time - dodgeStart;
+            IsWithinIFrames = (t >= IFrameStart && t <= IFrameEnd);
+            if (t >= DodgeDuration)
+            {
+                IsDodging = false;
+                IsWithinIFrames = false;
+            }
+        }
+    }
+
+    public bool IsPerfectDodgeAt(float impactTime)
+    {
+        // Call with the telegraph’s scheduled impact time
+        float rel = Mathf.Abs((impactTime) - Time.time);
+        return rel <= (PerfectWindowSize * 0.5f);
+    }
+}
+
+
+At the telegraph impact: if dodge.IsWithinIFrames → 0 damage; if additionally IsPerfectDodgeAt(impactTime) → trigger slow-mo pulse, refund stamina, or grant a “counter window” (see below).
+
+C) Counter-attack (cheap & juicy)
+
+If perfect block or perfect dodge, open a short “CounterWindow” (~0.5s).
+
+During that window, player’s next attack gets +25% damage and auto-aim snap.
+
+// CounterWindow.cs
+public class CounterWindow : MonoBehaviour
+{
+    public bool Active => Time.time <= _until;
+    float _until;
+
+    public void Open(float duration = 0.5f) => _until = Time.time + duration;
+}
+
+
+When perfect block/dodge happens: counter.Open(0.6f);
+When player attacks and counter.Active → set ctx.IsCounter = true.
+
+Phase 3 — Impact you can feel (low-cost juice)
+1) Micro hitstop
+// ImpactFX.cs
+using UnityEngine;
+using System.Collections;
+
+public class ImpactFX : MonoBehaviour
+{
+    public CameraShake shaker;
+    public float HitstopTime = 0.06f;
+    public float HitstopScale = 0.01f; // timeScale during stop (not 0 to avoid physics glitches)
+
+    public void Play(float damage)
+    {
+        // scale shake with damage (cap it)
+        shaker.Shake(Mathf.Clamp(damage * 0.004f, 0.05f, 0.2f));
+        StartCoroutine(Hitstop());
+        // trigger particles/sprites here
+    }
+
+    IEnumerator Hitstop()
+    {
+        float prev = Time.timeScale;
+        Time.timeScale = HitstopScale;
+        yield return new WaitForSecondsRealtime(HitstopTime);
+        Time.timeScale = prev;
+    }
+}
+
+2) Tiny camera shake
+// CameraShake.cs
+using UnityEngine;
+
+public class CameraShake : MonoBehaviour
+{
+    Vector3 origin;
+    void Awake(){ origin = transform.localPosition; }
+
+    public void Shake(float intensity)
+    {
+        StopAllCoroutines();
+        StartCoroutine(DoShake(intensity, 0.12f));
+    }
+
+    System.Collections.IEnumerator DoShake(float intensity, float dur)
+    {
+        float t = 0f;
+        while (t < dur)
+        {
+            t += Time.unscaledDeltaTime;
+            transform.localPosition = origin + (Vector3)Random.insideUnitCircle * intensity;
+            yield return null;
+        }
+        transform.localPosition = origin;
+    }
+}
+
+Phase 4 — De-clutter & lock the UI down
+
+Your notes: “interface moves when controlling evasion,” “cluttered screen.” Two fixes:
+
+A) Prevent UI from reacting to gameplay input
+
+If you use the new Input System, create two action maps:
+
+Gameplay (Move, Dodge, Block, Attack)
+
+UI (Navigate, Submit, Cancel)
+
+Enable only Gameplay during combat; keep UI disabled unless in menus.
+
+For any Selectable (Button/Text), set Navigation = None so left/right dodge won’t nudge focus.
+
+If you’re using a World Space Canvas that’s parented under the player, unparent it (or move to Screen Space) so movement input doesn’t jiggle it.
+
+B) Localize data in a clean HUD
+
+Move ALL combat info to edges/corners. Suggested layout:
+
+Top-Left: Player HP bar + tiny “Guard” icon that glows while blocking. Add a thin white outline flash on perfect block.
+
+Top-Right: Enemy HP bar + phase pips.
+
+Bottom-Center: Stamina bar (for dodge/block). Tint to teal on regen, amber when low.
+
+Above Player (world-space, small): Only short floating damage numbers (fade up, 0.6s). Nothing else in center.
+
+Minimal script to feed UI from events:
+
+// CombatUI.cs
+using UnityEngine;
+
+public class CombatUI : MonoBehaviour
+{
+    public HealthBar playerHP, enemyHP;
+    public StaminaBar stamina;
+    public ToastText damageToast;
+
+    public void OnPlayerHP(float cur, float max) => playerHP.Set(cur, max);
+    public void OnEnemyHP(float cur, float max)  => enemyHP.Set(cur, max);
+    public void OnStamina(float cur, float max)  => stamina.Set(cur, max);
+    public void ToastDamage(float amount)        => damageToast.Show("-" + amount.ToString("0"));
+}
+
+
+Wire this to the CombatantStats.Take(), StaminaSystem, and hit events, not in Update loops → cheaper and cleaner.
+
+Phase 5 — Telegraph hooks (quick wins)
+
+At wind-up start: BlockRing.PulseUpcoming() (faint), schedule impact time for perfect checks.
+
+At impact: call resolver, play impact FX.
+
+On perfect:
+
+Perfect Block → white ring snap + “clang” sfx, open CounterWindow.
+
+Perfect Dodge → 0 dmg, brief 0.3× time dilation for 0.08s, open CounterWindow.
+
+Order of Work (fastest first)
+
+Wire DamageResolver into enemy hit confirm.
+
+Hook Block & Dodge flags into resolver; enable perfect variants.
+
+Add ImpactFX (hitstop + shake).
+
+Lock UI (action maps, Navigation=None, move HUD to edges).
+
+CounterWindow hook.
+
+Each step is isolated; you can stop after any step and still be better than before.
+
+Quick test checklist
+
+Take a hit with no input → HP drops.
+
+Hold block → HP drops less (≈50%).
+
+Tap block just before hit → even less (≈15%), see ring/sfx, counter window opens.
+
+Dodge early/late → normal damage; dodge on time → 0 damage + counter window.
+
+UI stays put during movement/dodge; only HUD corners update.
+
+Damage number floats near the player briefly (no mid-screen spam).

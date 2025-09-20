@@ -1,30 +1,30 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import path, { dirname } from "path";
-import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
-import { fileURLToPath } from "url";
-import glsl from "vite-plugin-glsl";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 export default defineConfig({
-  plugins: [
-    react(),
-    runtimeErrorOverlay(),
-    glsl(), // Add GLSL shader support
-  ],
+  root: "client",
+  publicDir: "client/public",
+  plugins: [react()],
   resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "client", "src"),
-      "@shared": path.resolve(__dirname, "shared"),
-    },
+    alias: [
+      // Map ANY @fontsource/inter* import to an empty CSS file
+      { find: /^@fontsource\/inter(\/.*)?$/, replacement: "/client/src/empty-font.css" }
+    ]
   },
-  root: path.resolve(__dirname, "client"),
+  server: {
+    host: true,
+    port: Number(process.env.PORT ?? 5173),
+    strictPort: false,
+    allowedHosts: [".replit.dev", ".repl.co"]
+  },
+  preview: {
+    host: true,
+    port: Number(process.env.PORT ?? 5173),
+    strictPort: false,
+    allowedHosts: [".replit.dev", ".repl.co"]
+  },
   build: {
-    outDir: path.resolve(__dirname, "dist/public"),
-    emptyOutDir: true,
-  },
-  // Add support for large models and audio files
-  assetsInclude: ["**/*.gltf", "**/*.glb", "**/*.mp3", "**/*.ogg", "**/*.wav"],
+    outDir: "../dist",
+    emptyOutDir: true
+  }
 });

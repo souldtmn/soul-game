@@ -1,0 +1,373 @@
+Brother ⚔️🔥 that’s huge. Replit didn’t just build a skeleton — it felt the design and echoed back exactly what we’ve been aiming for: a game that is less about “fun” and more about psychological weight.
+
+Look at what’s happened here:
+
+They’ve already tied Soul collection → future genocide counter.
+
+They saw enemy respawning → future genocide tracking.
+
+They read the death system → future burn-to-revive.
+
+They caught the clean UI → eventual corruption.
+
+That means the blueprint bled into the code itself. It’s alive.
+
+The logs confirm:
+
+✅ Interactive combat (Punch-Out style works).
+
+✅ Soul spawning & collection (our Ash/SOUL placeholders).
+
+✅ Enemy respawning (loop for testing genocide runs).
+
+✅ Victory flow (the structure to hook whispers, corruption, and bosses into).
+
+This isn’t just a foundation — it’s the first spark of the Pyre.
+
+⚡ Next Steps (Phase 2 of skeleton):
+
+Genocide Counter → replace soul tally with countdown per area.
+
+When counter hits 0 → trigger boss placeholder.
+
+Whisper System Stub → start small: a text log that whispers after each kill.
+
+Corruption Flags → add a boolean for “revived once/twice/thrice” that alters UI slightly.
+
+Ash vs Dust Split → Souls collected = Ash (spendable later). Kills tallied = Dust.
+
+This is where it gets real: even if it’s still a test, we’ll see the psychological decay loop begin to manifest.
+
+👉 Do you want me to draft the exact dev tasks in Replit-friendly steps (so you can copy them straight in), or should we focus on designing the genocide counter + whispers escalation first before touching the code again?
+
+You said:
+The exact dev tasks please, Replit would love for us to finish their skeleton and add the decaying flesh to it.
+ChatGPT said:
+
+Absolutely, let’s bolt the bone structure together and start stitching on the decay. Here’s a clean, Replit-ready task list with tiny code patches you can drop in. We’ll keep it incremental so the preview keeps running.
+
+Phase 2 — “Decaying Flesh” Tasks
+1) Global Run State (Ash/Dust/Corruption/Genocide)
+
+Why: One source of truth shared by Overworld & Combat.
+
+Action: Create /src/state/GameStore.ts
+
+// /src/state/GameStore.ts
+export type AreaId = 'Vale'|'Crypt'|'Abyss';
+
+export const GameStore = {
+  area: 'Vale' as AreaId,
+  genocide: 14,          // remaining enemies in current area
+  ash: 0,                // spendable later
+  dust: 0,               // total kills (lore)
+  corruption: 0,         // deaths revived (0..3)
+  bossUnlocked: false,
+
+  resetArea(area: AreaId, count: number){
+    this.area = area;
+    this.genocide = count;
+    this.bossUnlocked = false;
+  },
+
+  onKill(rewardAsh=10){
+    this.ash += rewardAsh;
+    this.dust += 1;
+    if (this.genocide > 0) this.genocide -= 1;
+    if (this.genocide === 0) this.bossUnlocked = true;
+  },
+
+  revive(){
+    // called when burn-to-revive chosen (stub)
+    this.corruption = Math.min(3, this.corruption + 1);
+  },
+
+  hardReset(){
+    this.ash = 0;
+    this.corruption = 0;
+    this.resetArea('Vale', 14);
+  }
+};
+
+
+Acceptance: Both scenes can import GameStore and see live counters.
+
+2) Overworld HUD: show Genocide + Ash + Dust + Corruption
+
+Why: Immediate feedback loop.
+
+Patch: In /src/scenes/OverworldScene.ts
+
+import { GameStore } from '../state/GameStore';
+
+// after create():
+const hud = this.add.text(16, 12, '', { fontFamily:'monospace', fontSize:'16px', color:'#cfd2d6' });
+this.events.on('update', ()=>{
+  hud.setText(
+    `Area: ${GameStore.area} | Left: ${GameStore.genocide}` +
+    ` | Ash: ${GameStore.ash} | Dust: ${GameStore.dust}` +
+    ` | Corruption: ${GameStore.corruption}`
+  );
+});
+
+
+Acceptance: HUD updates in real time during exploration.
+
+3) Combat → Report Kills & Souls via GameStore
+
+Why: Hook test combat into genocide loop.
+
+Patch: In /src/scenes/CombatScene.ts after you detect enemy death:
+
+import { GameStore } from '../state/GameStore';
+
+// where enemy dies:
+GameStore.onKill(/*rewardAsh=*/10);
+this.scene.start('Overworld'); // returns to map for now
+
+
+Acceptance: Killing an enemy decrements “Left” and increments Ash/Dust.
+
+4) Whisper System (Stub that Escalates)
+
+Why: Start with text whispers; we’ll corrupt later.
+
+Action: Create /src/systems/Whispers.ts
+
+// /src/systems/Whispers.ts
+import { GameStore } from '../state/GameStore';
+
+const tiers = {
+  early: [
+    "keep going...",
+    "another one...",
+    "closer."
+  ],
+  mid: [
+    "we're almost there.",
+    "don't stop.",
+    "more."
+  ],
+  late: [
+    "ONLY ONE REMAINS",
+    "ENOUGH.",
+    "you don't live — you only burn."
+  ]
+};
+
+export function nextWhisper(): string {
+  const left = GameStore.genocide;
+  if (left >= 10) return pick(tiers.early);
+  if (left >= 3)  return pick(tiers.mid);
+  if (left >= 1)  return pick(tiers.late);
+  return ""; // boss time: silence
+}
+
+function pick(arr:string[]){ return arr[(Math.random()*arr.length)|0]; }
+
+
+Patch (Combat win effect): In CombatScene right after enemy dies and before returning to Overworld:
+
+import { nextWhisper } from '../systems/Whispers';
+
+const w = nextWhisper();
+if (w) {
+  // lightweight toast
+  const toast = this.add.text(480, 480, w, { fontFamily:'monospace', color:'#9aa0a6' }).setOrigin(0.5,1);
+  this.tweens.add({ targets: toast, alpha: 0, duration: 1500, onComplete: ()=> toast.destroy() });
+}
+
+
+Acceptance: After a kill, a whisper briefly appears; lines get harsher as “Left” shrinks.
+
+5) Corruption Affects Timing Windows (Narrowing)
+
+Why: Revive should hurt skill checks.
+
+Patch: In CombatScene.ts, centralize timing:
+
+function judgeTiming(delta:number, corruption:number){
+  // base windows
+  let perfect = [-1, +1];
+  let good    = [-4, +3];
+
+  // narrow by corruption (each level tightens by 1 frame both sides)
+  const tighten = corruption;
+  perfect = [perfect[0]+tighten, perfect[1]-tighten];
+  good    = [good[0]+tighten,    good[1]-tighten];
+
+  const inRange = (d:number, [a,b]:[number,number]) => d>=a && d<=b;
+
+  if (inRange(delta, perfect)) return 'PERFECT';
+  if (inRange(delta, good))    return 'GOOD';
+  return 'MISS';
+}
+
+
+And replace your judgement code:
+
+import { GameStore } from '../state/GameStore';
+// ...
+const delta = this.frame - 30;
+this.lastJudgement = judgeTiming(delta, GameStore.corruption) as any;
+
+
+Acceptance: After a revive (later), timing becomes stricter. (You can force test by GameStore.corruption=2 in console.)
+
+6) Simple Boss Placeholder Trigger (when Left=0)
+
+Why: Close the genocide loop.
+
+Action: Create /src/scenes/BossIntroScene.ts
+
+import Phaser from 'phaser';
+import { GameStore } from '../state/GameStore';
+
+export default class BossIntroScene extends Phaser.Scene {
+  constructor(){ super('BossIntro'); }
+
+  create(){
+    this.add.rectangle(0,0,960,540,0x000000).setOrigin(0);
+    this.add.text(480, 220, 'Chains snap.', {fontFamily:'monospace', fontSize:'24px', color:'#cfd2d6'}).setOrigin(0.5);
+    this.add.text(480, 280, 'Silence.', {fontFamily:'monospace', fontSize:'20px', color:'#9aa0a6'}).setOrigin(0.5);
+
+    this.time.delayedCall(1200, ()=>{
+      // later: go to actual boss scene
+      GameStore.resetArea('Vale', 14); // loop for now
+      this.scene.start('Overworld');
+    });
+  }
+}
+
+
+Patch (Overworld entry): At top of OverworldScene.create, before spawning enemies:
+
+import { GameStore } from '../state/GameStore';
+
+if (GameStore.bossUnlocked){
+  this.scene.start('BossIntro');
+  return;
+}
+
+
+Acceptance: When counter hits 0 and you return to Overworld, you get a boss intro placeholder.
+
+7) Separate Combat Scene Entry (Clean Transition)
+
+Why: Ensure combat is not in the exploration scene.
+
+Patch (Overworld collision→Combat):
+
+this.physics.add.overlap(this.player, enemy, ()=>{
+  this.scene.start('Combat', { enemyId: 'lurker' });
+});
+
+
+(If you already do this, you’re good. The point is: no combat UI in Overworld.)
+
+Acceptance: Combat always happens in the Combat scene.
+
+8) Game Over → Revive Stub that Raises Corruption
+
+Why: Make revive do something now.
+
+Patch in /src/scenes/GameOverScene.ts:
+
+import { GameStore } from '../state/GameStore';
+
+this.input.keyboard!.once('keydown-V', ()=> {
+  // "Burn" stub: increase corruption, resume Overworld
+  GameStore.revive();
+  this.scene.start('Overworld');
+});
+
+
+Acceptance: Pressing V increases Corruption (narrower timing next fights).
+
+9) Minimal Visual Decay in Combat (by Corruption)
+
+Why: Feel the rot.
+
+Patch (CombatScene.create):
+
+import { GameStore } from '../state/GameStore';
+
+// overlay cracks by corruption
+if (GameStore.corruption >= 1) {
+  const o = this.add.rectangle(0,0,960,540,0xffffff, 0.03*GameStore.corruption).setOrigin(0);
+  o.setBlendMode(Phaser.BlendModes.MULTIPLY);
+  // tiny screen jitter
+  this.time.addEvent({ delay: 1200, loop: true, callback: ()=>{
+    this.cameras.main.shake(80, 0.002*GameStore.corruption);
+  }});
+}
+
+
+Acceptance: After a revive, subtle white haze/jitter grows with corruption.
+
+10) Enemy Data to JSON (prep for variety)
+
+Why: Make adding enemies trivial.
+
+Action: Create /src/data/enemies/lurker.json
+
+{
+  "id": "lurker",
+  "name": "Lurker",
+  "hp": 30,
+  "ashReward": 10,
+  "moves": [
+    { "id":"claw_swipe", "damage":6, "impactFrame":30, "perfect":[-1,1], "good":[-4,3] }
+  ]
+}
+
+
+Patch (optional): In CombatScene, load JSON in preload() or statically import:
+
+// vite/ts can import json
+// import lurker from '../data/enemies/lurker.json';
+
+
+(You can adopt this after Phase 2; not required to run.)
+
+Acceptance: We can define test enemies from data without code edits.
+
+Tiny Checklist (so Replit “Agent 3” eats it nicely)
+
+ Add GameStore.ts, wire HUD in Overworld.
+
+ On enemy death, call GameStore.onKill(); return to Overworld.
+
+ Add Whispers.ts; show whisper toast after each kill.
+
+ Timing judgement narrows with GameStore.corruption.
+
+ Boss trigger: if bossUnlocked, jump to BossIntroScene.
+
+ Game Over V to revive → increments corruption, resume Overworld.
+
+ Combat-only corruption visuals (haze + slight shake).
+
+ (Optional) Move enemy stats to JSON.
+
+What you should see after these tasks
+
+The HUD shows Left / Ash / Dust / Corruption in Overworld.
+
+Killing an enemy reduces Left; whispers escalate as numbers shrink.
+
+When Left hits 0 → BossIntro scene fires.
+
+Dying and pressing V to revive tightens timing windows and adds subtle decay.
+
+When this all feels stable, we’ll move to Phase 3:
+
+Add Ash banking at a Shrine (exit tile).
+
+Add second enemy (Ashbeast) with lying whisper telegraph.
+
+Begin Area 2 “Crypt” map and its icy counter effects.
+
+Wire “Left” per area and a tiny area select for testing.
+
+If you want, tell me which file you’re editing and I’ll tailor the next patch line-for-line for that file.

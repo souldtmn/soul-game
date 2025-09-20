@@ -1,0 +1,259 @@
+Message to Agent
+
+Goal: Add clear, readable telegraph cues so players can time an Evade or Defend before enemy impact.
+
+What to implement:
+
+Enemy Wind-Up Bar (Telegraph)
+
+When an enemy starts an attack, show a bar above the enemy that fills over ~0.6–1.2s.
+
+At the final 6–8 frames, flash the bar (or outline) to signal impact is imminent.
+
+Directional Evade Arrows
+
+Show left/right arrow icons near the player during wind-up.
+
+On impact frame, briefly flash the correct arrow if the attack is directional.
+
+Defend Ring
+
+Press-and-hold K/Shift to raise a ring/shield overlay on the player.
+
+If the ring is active on impact, reduce damage (50%).
+
+Audio + Screen Feedback
+
+Soft “wind-up” beep when bar reaches 80%.
+
+Short “tick” exactly on impact frame.
+
+Tiny camera shake on impact; green flash on perfect evade, blue flash on successful defend.
+
+Input Hints (HUD)
+
+Bottom text: “Evade ←/→ (A/D) | Defend (K/Shift)”.
+
+Hide this hint after 3 successful interactions.
+
+Acceptance Criteria:
+
+I can see an enemy is winding up (bar) and when it will hit (flash + tick).
+
+Evade timing feels readable: successful if I move left/right within a small window (e.g., ±4 frames).
+
+Defend works while held; shows ring and reduces damage.
+
+On perfect evade/defend, show a 300ms success text (“Perfect Evade!” / “Guarded!”).
+
+Works for at least 2 different enemy attacks with different wind-up durations.
+
+(Optional) Phaser-style Pseudocode Hints
+// start of enemy wind-up
+teleBar.setVisible(true).setScale(0,1);
+this.tweens.add({ targets: teleBar, scaleX: 1, duration: windupMs });
+
+// near impact
+this.time.delayedCall(windupMs-120, ()=> teleBar.setTint(0xffe08a));
+// on impact frame
+this.cameras.main.shake(60, 0.004);
+this.sound.play('impact_tick');
+teleBar.setVisible(false);
+
+// defend ring
+if (keys.shift.isDown) { shield.setVisible(true); isDefending = true; }
+else { shield.setVisible(false); isDefending = false; }
+
+// resolve
+const evaded = Math.abs(frame - impactFrame) <= evadeWindow && playerIsDodging;
+const guarded = isDefending;
+damage = evaded ? 0 : guarded ? Math.ceil(damage*0.5) : damage;
+
+
+If you want, I can also hand you a tiny sprite-less CSS-rectangle version of the wind-up bar + impact flash you can paste straight into your current Combat scene.
+
+You said:
+That would be amazing my friend!
+ChatGPT said:
+
+Heck yes. Here’s a sprite-less, copy-paste patch you can drop into your CombatScene.ts to get readable telegraphs: a wind-up bar, left/right evade arrows, a hold-to-guard ring, and tiny success toasts. No art assets needed—just Phaser shapes/text.
+
+1) Paste these helpers near the top of CombatScene.ts
+// === Telegraph UI helpers (drop-in) ===
+type TelegraphOpts = { windupMs: number; directional?: 'left'|'right'|null; impactFrame?: number };
+
+class TelegraphUI {
+  scene: Phaser.Scene;
+  bar!: Phaser.GameObjects.Rectangle;
+  barOutline!: Phaser.GameObjects.Rectangle;
+  leftArrow!: Phaser.GameObjects.Text;
+  rightArrow!: Phaser.GameObjects.Text;
+  shield!: Phaser.GameObjects.Arc;
+  hint!: Phaser.GameObjects.Text;
+  successText!: Phaser.GameObjects.Text;
+
+  constructor(scene: Phaser.Scene){
+    this.scene = scene;
+
+    // bar + outline (top center)
+    this.barOutline = scene.add.rectangle(480, 80, 320, 10, 0x000000, 0)
+      .setStrokeStyle(2, 0x666a70).setOrigin(0.5);
+    this.bar = scene.add.rectangle(480-160, 80, 0, 10, 0xffc66d).setOrigin(0,0.5).setAlpha(0.95);
+    this.bar.setVisible(false); this.barOutline.setVisible(false);
+
+    // arrows near player (bottom center-ish)
+    this.leftArrow  = scene.add.text(420, 460, '←', { fontFamily:'monospace', fontSize:'28px', color:'#d0d7de' }).setAlpha(0);
+    this.rightArrow = scene.add.text(540, 460, '→', { fontFamily:'monospace', fontSize:'28px', color:'#d0d7de' }).setAlpha(0);
+
+    // defend ring around player
+    this.shield = scene.add.circle(480, 360, 56, 0x79c0ff, 0.12).setVisible(false);
+
+    // bottom hint
+    this.hint = scene.add.text(480, 508, 'Evade A/D or ←/→  |  Hold K/Shift to Guard', {
+      fontFamily:'monospace', fontSize:'14px', color:'#9aa0a6'
+    }).setOrigin(0.5,1);
+
+    // success toast (hidden by default)
+    this.successText = scene.add.text(480, 300, '', { fontFamily:'monospace', fontSize:'18px', color:'#9be9a8' })
+      .setOrigin(0.5).setAlpha(0);
+  }
+
+  showWindup({ windupMs, directional }: TelegraphOpts){
+    this.bar.setVisible(true); this.barOutline.setVisible(true);
+    this.bar.setPosition(480-160, 80).setSize(0, 10).setFillStyle(0xffc66d);
+    this.scene.tweens.add({ targets: this.bar, width: 320, duration: windupMs, ease: 'Linear' });
+
+    // arrows
+    this.leftArrow.setAlpha(directional ? (directional==='left'? 1:0.35) : 1);
+    this.rightArrow.setAlpha(directional ? (directional==='right'?1:0.35) : 1);
+  }
+
+  flashImminent(){
+    // slight color/tint shift to mark "danger"
+    this.bar.setFillStyle(0xff9e66);
+    this.scene.cameras.main.flash(60, 255, 230, 180);
+  }
+
+  impactTick(){
+    // tiny shake + bar hide
+    this.scene.cameras.main.shake(60, 0.004);
+    this.bar.setVisible(false); this.barOutline.setVisible(false);
+    this.leftArrow.setAlpha(0); this.rightArrow.setAlpha(0);
+  }
+
+  setShieldVisible(v:boolean, px=480, py=360){
+    this.shield.setPosition(px, py).setVisible(v);
+    if (v) this.shield.setScale(1,1).setAlpha(0.14);
+  }
+
+  toastSuccess(text:string, color='#9be9a8'){
+    this.successText.setText(text).setColor(color).setAlpha(1);
+    this.scene.tweens.add({ targets: this.successText, y: 270, alpha: 0, duration: 500, onComplete: ()=>{
+      this.successText.setY(300).setAlpha(0);
+    }});
+  }
+}
+
+2) In your CombatScene class, add fields for input & telegraph
+// inside class CombatScene
+tele!: TelegraphUI;
+keyLeft!: Phaser.Input.Keyboard.Key;
+keyRight!: Phaser.Input.Keyboard.Key;
+keyGuard1!: Phaser.Input.Keyboard.Key; // K
+keyGuard2!: Phaser.Input.Keyboard.Key; // Shift
+isDodgingLeft=false; isDodgingRight=false; isDefending=false;
+currentWindupMs=900; // default; vary per enemy move
+
+
+Initialize them in create():
+
+this.tele = new TelegraphUI(this);
+this.keyLeft  = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.A);
+this.keyRight = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.D);
+this.keyGuard1= this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.K);
+this.keyGuard2= this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT);
+
+
+Track guard state each update:
+
+// in update / or your existing update lambda
+this.isDefending = this.keyGuard1.isDown || this.keyGuard2.isDown;
+this.tele.setShieldVisible(this.isDefending, 480, 360);
+
+3) When the enemy begins wind-up, show cues
+
+Where you transition to enemy telegraph (e.g., EnemyTelegraph state), add:
+
+// choose a windup duration per move; example 900ms
+this.currentWindupMs = 700 + Math.floor(Math.random()*400); // 700–1100ms
+const directional: 'left'|'right'|null = Math.random() < 0.5 ? 'left':'right';
+
+this.tele.showWindup({ windupMs: this.currentWindupMs, directional });
+
+// mark “imminent” ~120ms before impact
+this.time.delayedCall(this.currentWindupMs - 120, ()=> this.tele.flashImminent());
+
+
+Optional: let player “commit” to an evade by tapping left/right during wind-up:
+
+// read arrows during windup
+this.isDodgingLeft  = Phaser.Input.Keyboard.JustDown(this.keyLeft);
+this.isDodgingRight = Phaser.Input.Keyboard.JustDown(this.keyRight);
+
+
+(If you prefer “hold to dodge”, set flags from .isDown instead.)
+
+4) On impact frame, resolve evade/guard and give feedback
+
+Where you resolve enemy damage (your EnemyResolve), do:
+
+// impact moment visuals
+this.tele.impactTick();
+
+// judge evade window: small grace around impact
+const evadeWindowMs = 120; // ±60ms
+const pressedEvade = this.isDodgingLeft || this.isDodgingRight;
+
+// optional: directional correctness check
+// e.g., only count evade if arrow matched the chosen direction
+// (Store which directional was shown during windup; example we stored in a local var)
+const matchedDirection = true; // plug your check if you keep it
+const evaded = pressedEvade && matchedDirection;
+
+// guard check
+const guarded = this.isDefending;
+
+// final damage calc
+let dmg = 10; // enemy base
+if (evaded)  { dmg = 0; this.tele.toastSuccess('Perfect Evade!'); }
+else if (guarded) { dmg = Math.ceil(dmg * 0.5); this.tele.toastSuccess('Guarded', '#79c0ff'); }
+
+// apply
+this.playerHP = Math.max(0, this.playerHP - dmg);
+
+// reset flags after resolve
+this.isDodgingLeft = this.isDodgingRight = false;
+
+
+If your enemy resolution already has a timer to hit the impact frame (e.g., at frame=30), keep that, and schedule impactTick() & the resolve right there.
+
+5) Optional: show attack timing success on player turn too
+
+Right after you judge the player’s attack input:
+
+if (this.lastJudgement==='PERFECT') this.tele.toastSuccess('Critical!', '#f8d847');
+else if (this.lastJudgement==='GOOD') this.tele.toastSuccess('Good', '#b6e3ff');
+
+6) Quick acceptance checklist (what you should see)
+
+A wind-up bar fills before an enemy hit; it flashes right before impact.
+
+Left/Right arrows appear; you can tap A/D (or ←/→) to commit to an evade.
+
+Holding K/Shift shows a faint shield ring; guarding halves damage.
+
+On success, a tiny toast appears (“Perfect Evade!” / “Guarded”).
+
+Camera shakes softly on impact; the bar/arrows hide immediately after.
+
+If you want, tell me your current enemy wind-up logic (frames/timers) and I’ll wire these calls right into your state machine lines so it’s literally paste-exact.

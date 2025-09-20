@@ -1,0 +1,82 @@
+Music Design — SOUL: Pyre of Determination
+Core Instruments
+
+Piano → slowly detunes, becomes unstable.
+
+Strings → evolve from drone → vibrato → screech.
+
+Percussion → heartbeat → irregular panic → chains.
+
+Noise/Static → rises as genocide nears, oppressive texture.
+
+Whisper Vocals → hidden at first, later dominate entire mix.
+
+Area Soundscapes
+
+Area 1: Hollow Vale
+
+14–10: Minimal piano + sustained drone.
+
+9–5: Detuning creeps in, percussion grows irregular.
+
+4–2: Reversed piano notes, static pulses intrude.
+
+1: Pure distortion collapse → silence.
+
+Boss: Chains used as percussion, oppressive drone, whispers hidden.
+
+Area 2: Shattered Crypt
+
+14–10: Hollow chimes + deep drones.
+
+9–6: Glass cracking rhythm introduced.
+
+5–3: Frozen heartbeat percussion, static builds.
+
+1: Fade-out → sudden ice crack.
+
+Boss: Metallic clangs, faint choir → mid-fight silence → screaming choir climax.
+
+Area 3: Abyss Below
+
+13–10: Sub-bass hum, faint and cavernous.
+
+9–7: Distorted echoes of earlier themes (Vale + Crypt motifs).
+
+6–3: Static overtakes, percussion glitches out.
+
+1: Silence → faint heartbeat.
+
+Boss:
+
+Phase 1: Deep bass drones.
+
+Phase 2: Chains + static shrieks.
+
+Phase 3: Silence → whispers circle in binaural/3D.
+
+Ending: Single distorted piano note fading endlessly.
+
+Burn Audio Progression
+
+1st Burn: Track skips, restarts slightly detuned.
+
+2nd Burn: Distortion layers stack, percussion accelerates.
+
+3rd Burn: Whispers overwhelm, drowning entire soundtrack.
+
+AI Implementation Notes
+
+To make this real, we’ll need two tool layers:
+
+Composition/structure → symbolic or MIDI-based (e.g. AIVA, Orb Composer, Soundraw, or even MuseNet-style models) to structure the flow.
+
+Sound design & rendering → granular audio AI or synthesis (e.g. Riffusion, Stable Audio, Kaiber Audio, ElevenLabs for whispers, and custom VSTs for chains/static/glass).
+
+We could also use game engines’ adaptive audio layers (like FMOD/Wwise) to:
+
+Tie player genocide progress → static level.
+
+Sync Burn mechanic → track corruption in real-time.
+
+Trigger boss phase audio events (e.g., silence drop → choir cut in).

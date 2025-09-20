@@ -1,7 +1,6 @@
 import { Canvas } from "@react-three/fiber";
 import { Suspense, useState, useEffect } from "react";
 import { KeyboardControls } from "@react-three/drei";
-import "@fontsource/inter";
 import Game from "./components/Game";
 import HUD from "./components/HUD";
 import CombatUI from "./components/CombatUI";
