@@ -1,17 +1,17 @@
-import { useTexture } from "@react-three/drei";
+import React, { useMemo, useEffect } from "react";
+import { useLoader } from "@react-three/fiber";
 import Room from "./Room";
 import Soul from "./Soul";
 import Enemy from "./Enemy";
 import { useSouls } from "../lib/stores/useSouls";
 import { useEnemies } from "../lib/stores/useEnemies";
 import { useGenocide } from "../lib/stores/useGenocide";
-import { useMemo, useEffect } from "react";
 import * as THREE from "three";
 
 export default function GameWorld() {
-  const grassTexture = useTexture("/textures/grass.png");
-  const sandTexture = useTexture("/textures/sand.jpg");
-  const asphaltTexture = useTexture("/textures/asphalt.png");
+  const grassTexture = useLoader(THREE.TextureLoader, "/textures/grass.png");
+  const sandTexture = useLoader(THREE.TextureLoader, "/textures/sand.jpg");
+  const asphaltTexture = useLoader(THREE.TextureLoader, "/textures/asphalt.png");
   
   const { souls } = useSouls();
   const { enemies } = useEnemies();
