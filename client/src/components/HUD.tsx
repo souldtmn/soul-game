@@ -6,10 +6,24 @@ import MonsterCountdown from "./MonsterCountdown";
 import WhisperDisplay from "./WhisperDisplay";
 
 export default function HUD() {
-  const { health, maxHealth } = usePlayer();
-  const { totalSouls, soulCount } = useSouls();
-  const { isPlayerAttacking, attackTimer } = useCombat();
-  const { killCount, totalEnemiesRequired, currentThreshold, uiCorruptionLevel, genocideComplete, ash, dust, corruption, area } = useGenocide();
+  return (
+    <div className="hud">
+      <div className="panel top-left">
+        <div className="label">HEALTH</div>
+        <div className="bar"><span style={{width: "100%"}} /></div>
+        <div className="small">100 / 100</div>
+      </div>
+
+      <div className="panel mid-left">
+        <div className="title">SOUL PROGRESSION</div>
+        <div className="small">Area: Vale | Left: 14 | Ash: 0</div>
+      </div>
+
+      <div className="panel bottom">
+        <div className="small">🜂 Evade: A ↔ D • 🛡 Defend: K</div>
+      </div>
+    </div>
+  );
 
   // Apply corruption effects to UI elements
   const getCorruptedStyle = (baseColor: string, corruption: number) => {

@@ -20,3 +20,6 @@ export const SOUL_VALUES = {
   strong: 15,
   boss: 25
 };
+
+// Exploration balance
+export const MAX_EXPLORATION_ENEMIES = 3;

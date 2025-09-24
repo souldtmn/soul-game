@@ -3,6 +3,8 @@ import { useEffect, useMemo } from "react";
 import { useEnemies } from "../lib/stores/useEnemies";
 import { useGenocide } from "../lib/stores/useGenocide";
 import * as THREE from "three";
+import { MAX_EXPLORATION_ENEMIES } from "../lib/constants";
+
 
 export default function Room() {
   const woodTexture = useTexture("/textures/wood.jpg");

@@ -1,59 +1,74 @@
-import { useEffect } from "react";
-import { useGame } from "../lib/stores/useGame";
-import { useAudio } from "../lib/stores/useAudio";
+// client/src/components/Game.tsx
+import { useCombat } from "../lib/stores/useCombat";
+
 import GameWorld from "./GameWorld";
 import Player from "./Player";
 import Combat from "./Combat";
-import MusicCorruption from "./MusicCorruption";
-import TelegraphWindupBar from "./TelegraphWindupBar";
-import TelegraphEvadeArrows from "./TelegraphEvadeArrows";
-import TelegraphDefendRing from "./TelegraphDefendRing";
+
+// New debug import
+import DebugHitCircle from "./DebugHitCircle";
+
 import TelegraphSuccessToast from "./TelegraphSuccessToast";
 import DamageNumbers from "./DamageNumbers";
 import DebugDamageHarness from "./DebugDamageHarness";
+import MusicCorruption from "./MusicCorruption";
+// If you actually have this file, you can uncomment:
+// import TelegraphEvadeArrows from "./TelegraphEvadeArrows";
 
-// This component only renders 3D content inside the Canvas
+function CombatArenaBackdrop() {
+  return (
+    <group>
+      {/* simple arena backdrop so it’s obvious we’re in combat */}
+      <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[40, 40]} />
+        <meshBasicMaterial color="#141414" />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[3.2, 3.6, 64]} />
+        <meshBasicMaterial color="#404040" />
+      </mesh>
+    </group>
+  );
+}
+
 export default function Game() {
-  const { phase, start } = useGame();
-  const { setBackgroundMusic, setHitSound, setSuccessSound } = useAudio();
+  const { combatPhase } = useCombat();
 
-  // Initialize audio
-  useEffect(() => {
-    const bgMusic = new Audio('/sounds/background.mp3');
-    bgMusic.loop = true;
-    bgMusic.volume = 0.3;
-    setBackgroundMusic(bgMusic);
+  if (combatPhase === "in_combat") {
+    return (
+      <>
+        <CombatArenaBackdrop />
+        <Combat />
 
-    const hitAudio = new Audio('/sounds/hit.mp3');
-    hitAudio.volume = 0.5;
-    setHitSound(hitAudio);
+        {/* Debug hit circles for testing */}
+        <DebugHitCircle radius={2.5} color="#4ade80" />
+        <DebugHitCircle
+          radius={3}
+          thickness={0.2}
+          color="#f87171"
+          startAngleDeg={-60}
+          endAngleDeg={60}
+        />
 
-    const successAudio = new Audio('/sounds/success.mp3');
-    successAudio.volume = 0.7;
-    setSuccessSound(successAudio);
+        {/* If you have TelegraphEvadeArrows.tsx, uncomment below */}
+        {/* <TelegraphEvadeArrows /> */}
 
-    // Start the game
-    start();
-  }, [setBackgroundMusic, setHitSound, setSuccessSound, start]);
-
-  if (phase === "ready") {
-    return null;
+        <TelegraphSuccessToast />
+        <DamageNumbers />
+        <DebugDamageHarness />
+        <MusicCorruption />
+      </>
+    );
   }
 
-  // Render 3D content with Telegraph UI overlays
+  // Overworld (and during entering/exiting)
   return (
     <>
       <GameWorld />
       <Player />
-      <Combat />
-
-      {/* Telegraph Combat System UI */}
-      <TelegraphEvadeArrows />
-      <TelegraphDefendRing />
-      <TelegraphSuccessToast />
-
       <DamageNumbers />
       <DebugDamageHarness />
-</>
+      <MusicCorruption />
+    </>
   );
 }

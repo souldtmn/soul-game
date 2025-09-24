@@ -1,4 +1,6 @@
 import { useCombat } from "../lib/stores/useCombat";
+import PunchOutTransition from "./transition/PunchOutTransition";
+
 
 export default function CombatUI() {
   const { combatPhase, currentEnemy } = useCombat();

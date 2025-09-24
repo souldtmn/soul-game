@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import * as THREE from "three";
 import { useSouls } from "./useSouls";
+import { MAX_EXPLORATION_ENEMIES } from "../constants";
+
 
 interface Enemy {
   id: string;
@@ -25,15 +27,21 @@ interface EnemiesState {
 export const useEnemies = create<EnemiesState>((set, get) => ({
   enemies: [],
   
-  addEnemy: (enemy) => {
+  addEnemy: (enemy: Enemy) => {
     const { enemies } = get();
-    
-    // Guard against duplicate IDs
-    if (enemies.find(e => e.id === enemy.id)) {
-      console.warn(`⚠️ Duplicate enemy ID attempted: ${enemy.id}`);
+
+    // Guard against duplicate IDs (clean retype)
+    if (enemies.some((e) => e.id === enemy.id)) {
+      console.warn(`Duplicate enemy ID attempted: ${enemy.id}`);
       return;
     }
-    
+
+    // Cap to stabilize exploration
+    if (enemies.length >= MAX_EXPLORATION_ENEMIES) {
+      console.warn(`Max exploration enemies (${MAX_EXPLORATION_ENEMIES}) reached; not adding: ${enemy.id}`);
+      return;
+    }
+
     set({ enemies: [...enemies, enemy] });
     console.log(`Enemy added: ${enemy.id}`);
   },

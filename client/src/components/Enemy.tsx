@@ -8,8 +8,7 @@ import { useTelegraph } from "../lib/stores/useTelegraph";
 import { useAudio } from "../lib/stores/useAudio";
 import { useGenocide } from "../lib/stores/useGenocide";
 import { DamageResolver } from "../lib/systems/DamageResolver";
-import { checkCollision } from "../lib/collision";
-import { ENEMY_SPEED, ENEMY_ATTACK_RANGE } from "../lib/constants";
+import { ENEMY_SPEED } from "../lib/constants";
 import TelegraphWindupBar from "./TelegraphWindupBar";
 
 interface EnemyProps {
@@ -18,7 +17,7 @@ interface EnemyProps {
     position: THREE.Vector3;
     health: number;
     maxHealth: number;
-    type: 'basic' | 'strong';
+    type: "basic" | "strong";
     lastAttackTime: number;
   };
 }
@@ -26,151 +25,118 @@ interface EnemyProps {
 export default function Enemy({ enemy }: EnemyProps) {
   const enemyRef = useRef<THREE.Mesh>(null);
   const { position: playerPosition } = usePlayer();
-  const { updateEnemy, removeEnemy } = useEnemies();
-  const { 
-    isPlayerAttacking, 
-    playerAttackRange, 
-    combatPhase, 
-    currentEnemy, 
-    initiateCombat, 
-    exitCombat 
-  } = useCombat();
-  const { 
-    startWindup, 
-    updateWindup, 
-    resolveImpact, 
+  const { updateEnemy } = useEnemies();
+  const { combatPhase, currentEnemy, initiateCombat, exitCombat } = useCombat();
+  const {
+    startWindup,
+    updateWindup,
+    resolveImpact,
     phase: telegraphPhase,
-    hitstopActive 
+    hitstopActive,
   } = useTelegraph();
-  const { playHit } = useAudio();
   const { incrementKillCount } = useGenocide();
 
   const [moveDirection] = useState(() => new THREE.Vector3());
   const [combatInitiated, setCombatInitiated] = useState(false);
-  
+
   useFrame((state, delta) => {
     if (!enemyRef.current) return;
+    if (hitstopActive) return;
 
-    // Skip enemy updates during hitstop for global pause effect
-    if (hitstopActive) {
-      return;
-    }
-
+    // positions
     const playerPos = new THREE.Vector3(playerPosition.x, 0, playerPosition.z);
     const enemyPos = new THREE.Vector3(enemy.position.x, 0, enemy.position.z);
     const distanceToPlayer = playerPos.distanceTo(enemyPos);
-    
-    // Update telegraph wind-up if this enemy is telegraphing (both winding_up AND imminent)
-    if ((telegraphPhase === 'winding_up' || telegraphPhase === 'imminent') && currentEnemy?.id === enemy.id) {
-      updateWindup(delta);
-    }
 
-    // Only move and initiate combat during overworld phase
-    if (combatPhase === 'overworld') {
-      // AI: Move towards player
+    const isTransition =
+      combatPhase === "entering_combat" || combatPhase === "exiting_combat";
+    const isInCombat = combatPhase === "in_combat";
+    const isTarget = isInCombat && currentEnemy?.id === enemy.id;
+
+    if (isTransition) return;
+
+    // OVERWORLD: chase + possibly initiate combat once
+    if (combatPhase === "overworld") {
       if (distanceToPlayer > 1.5) {
         moveDirection.subVectors(playerPos, enemyPos).normalize();
         const newPosition = enemy.position.clone();
         newPosition.x += moveDirection.x * ENEMY_SPEED * delta;
         newPosition.z += moveDirection.z * ENEMY_SPEED * delta;
-        
         updateEnemy(enemy.id, { position: newPosition });
         enemyRef.current.position.copy(newPosition);
       }
 
-      // Initiate combat when player gets close
-      if (distanceToPlayer <= 2.0 && !combatInitiated) {
-        console.log(`Player encountered enemy ${enemy.id}, initiating combat!`);
+      if (!combatInitiated && distanceToPlayer <= 2.0) {
         setCombatInitiated(true);
         initiateCombat({
           id: enemy.id,
-          position: { x: enemy.position.x, y: enemy.position.y, z: enemy.position.z },
+          position: {
+            x: enemy.position.x,
+            y: enemy.position.y,
+            z: enemy.position.z,
+          },
           health: enemy.health,
           maxHealth: enemy.maxHealth,
-          type: enemy.type
+          type: enemy.type,
         });
       }
+      return;
     }
 
-    // Only allow combat actions during in_combat phase
-    if (combatPhase === 'in_combat' && currentEnemy?.id === enemy.id) {
-      // Combat.tsx now handles all damage application, Enemy.tsx only handles enemy attacks
-      
-      // Telegraph Attack System - ONLY attack system now
+    // IN_COMBAT: only the engaged enemy runs telegraphs
+    if (isInCombat) {
+      if (!isTarget) return;
+
+      // keep windup UI ticking
+      if (telegraphPhase === "winding_up" || telegraphPhase === "imminent") {
+        updateWindup(delta);
+      }
+
+      // cadence: start telegraph
       if (state.clock.elapsedTime - enemy.lastAttackTime > 4) {
-        // Determine attack parameters based on enemy type
-        const windupDuration = enemy.type === 'strong' ? 1.0 : 0.8;
-        const attackDirection = Math.random() < 0.6 ? (Math.random() < 0.5 ? 'left' : 'right') : null;
-        
-        // Start telegraph wind-up
-        console.log(`⚡ Enemy ${enemy.id} (${enemy.type}) begins telegraph attack (${windupDuration}s)`);
+        const windupDuration = enemy.type === "strong" ? 1.0 : 0.8;
+        const attackDirection =
+          Math.random() < 0.6 ? (Math.random() < 0.5 ? "left" : "right") : null;
         startWindup(enemy.id, windupDuration, attackDirection);
-        
-        // Update last attack time to prevent spam
         updateEnemy(enemy.id, { lastAttackTime: state.clock.elapsedTime });
       }
-      
-      // Handle telegraph resolution when impact occurs
-      if (telegraphPhase === 'impact' && currentEnemy?.id === enemy.id) {
-        console.log('💥 Telegraph impact - resolving damage...');
+
+      // resolve at impact
+      if (telegraphPhase === "impact") {
         const result = resolveImpact();
-        
-        // Use DamageResolver for consistent damage calculation
+
         const { getStats: getPlayerStats } = usePlayer.getState();
         const { corruption } = useGenocide.getState();
         const playerStats = getPlayerStats();
-        
-        const baseDamage = enemy.type === 'strong' ? 15 : 10;
+
+        const baseDamage = enemy.type === "strong" ? 15 : 10;
         const damageResult = DamageResolver.enemyAttacksPlayer(
           baseDamage,
           enemy.type,
           playerStats.armor,
           result.guarded,
-          result.guarded ? result.blockReduction : 0, // Use skill-based block reduction
+          result.guarded ? result.blockReduction : 0,
           result.evaded,
-          corruption
+          corruption,
         );
-        
-        // Apply calculated damage
+
         if (damageResult.finalDamage > 0) {
           const { takeDamage } = usePlayer.getState();
           takeDamage(damageResult.finalDamage);
-          
-          // Log with detailed damage info
-          const statusFlags = [
-            damageResult.wasCritical ? 'CRIT!' : '',
-            damageResult.wasBlocked ? 'BLOCKED' : '',
-            damageResult.wasEvaded ? 'EVADED' : ''
-          ].filter(Boolean).join(' ');
-          
-          console.log(`👹 Enemy ${enemy.id} hits for ${damageResult.finalDamage} damage ${statusFlags}`);
-          
-          // Check if player is defeated (after takeDamage already applied)
+
           if (playerStats.isDead) {
-            console.log('💀 Player defeated by telegraph attack!');
-            
-            // Track death for corruption system
             const { incrementDeath } = useGenocide.getState();
             incrementDeath();
-            
-            exitCombat(false); // Defeat
+            exitCombat(false);
           }
-        } else {
-          // Perfect evade or complete block
-          const reason = damageResult.wasEvaded ? 'perfectly evaded' : 'completely blocked';
-          console.log(`🏃 Player ${reason} telegraph attack!`);
         }
       }
     }
+  }); // <-- correct closing for useFrame (no deps array)
 
-    // Reset combat initiated flag when returning to overworld
-    if (combatPhase === 'overworld' && combatInitiated) {
-      setCombatInitiated(false);
-    }
-  });
-
-  const enemyColor = enemy.type === 'strong' ? "#d63031" : "#a29bfe";
-  const healthRatio = enemy.health / enemy.maxHealth;
+  // ---- derived values (render-only) ----
+  const enemyColor = enemy.type === "strong" ? "#d63d3d" : "#888";
+  const healthRatio = enemy.maxHealth > 0 ? enemy.health / enemy.maxHealth : 0;
 
   return (
     <group>
@@ -181,25 +147,34 @@ export default function Enemy({ enemy }: EnemyProps) {
       >
         <boxGeometry args={[1, 2, 1]} />
         <meshLambertMaterial color={enemyColor} />
-        
-        {/* Enemy "face" indicator */}
+        {/* face indicator */}
         <mesh position={[0, 0.3, 0.51]}>
           <planeGeometry args={[0.4, 0.4]} />
           <meshBasicMaterial color="#000000" />
         </mesh>
       </mesh>
-      
+
       {/* Health bar */}
-      <mesh position={[enemy.position.x, enemy.position.y + 2.5, enemy.position.z]}>
+      <mesh
+        position={[enemy.position.x, enemy.position.y + 2.5, enemy.position.z]}
+      >
         <planeGeometry args={[healthRatio, 0.1]} />
         <meshBasicMaterial color="#ff0000" />
       </mesh>
-      
-      {/* Telegraph Wind-up Bar */}
-      <TelegraphWindupBar 
-        enemyPosition={new THREE.Vector3(enemy.position.x, enemy.position.y, enemy.position.z)}
-        enemyId={enemy.id}
-      />
+
+      {/* Wind-up bar only for the active combat target */}
+      {combatPhase === "in_combat" && currentEnemy?.id === enemy.id && (
+        <TelegraphWindupBar
+          enemyPosition={
+            new THREE.Vector3(
+              enemy.position.x,
+              enemy.position.y,
+              enemy.position.z,
+            )
+          }
+          enemyId={enemy.id}
+        />
+      )}
     </group>
   );
 }
