@@ -1,38 +1,62 @@
 // client/src/components/Game.tsx
+import { useEffect, useRef, useState } from "react";
+import BossIntro from "./BossIntro";
+import { useEnemies } from "../lib/stores/useEnemies";
 import { useCombat } from "../lib/stores/useCombat";
+import * as THREE from "three";
 
 import GameWorld from "./GameWorld";
 import Player from "./Player";
 import Combat from "./Combat";
-
-// New debug import
 import DebugHitCircle from "./DebugHitCircle";
-
 import TelegraphSuccessToast from "./TelegraphSuccessToast";
 import DamageNumbers from "./DamageNumbers";
 import DebugDamageHarness from "./DebugDamageHarness";
 import MusicCorruption from "./MusicCorruption";
-// If you actually have this file, you can uncomment:
-// import TelegraphEvadeArrows from "./TelegraphEvadeArrows";
 
 function CombatArenaBackdrop() {
   return (
     <group>
-      {/* simple arena backdrop so it’s obvious we’re in combat */}
       <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[40, 40]} />
         <meshBasicMaterial color="#141414" />
-      </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[3.2, 3.6, 64]} />
-        <meshBasicMaterial color="#404040" />
       </mesh>
     </group>
   );
 }
 
 export default function Game() {
-  const { combatPhase } = useCombat();
+  const { combatPhase, bossIntroSeen, setBossIntroSeen, resetEncounterFlags } = useCombat();
+  const enemies = useEnemies ? useEnemies((s) => s.enemies) : [];
+
+  const hasBoss =
+    Array.isArray(enemies) &&
+    enemies.some((e: any) => e?.isBoss || e?.type === "boss" || e?.tier === "boss");
+
+  const forceIntro = typeof window !== "undefined" && !!window.TEST?.showBossIntro;
+
+  // Local “show right now” flag. The store flag is the canonical “already seen this encounter.”
+  const [showIntro, setShowIntro] = useState(false);
+  const shownForEncounter = useRef(false);
+
+  useEffect(() => {
+    if (combatPhase === "in_combat") {
+      if ((hasBoss && !bossIntroSeen && !shownForEncounter.current) || forceIntro) {
+        setShowIntro(true);
+        shownForEncounter.current = true;
+      }
+    } else {
+      // leaving combat: clear local + store so next encounter can show again
+      setShowIntro(false);
+      shownForEncounter.current = false;
+      resetEncounterFlags?.(); // or setBossIntroSeen(false) if you didn’t add resetEncounterFlags
+    }
+  }, [combatPhase, hasBoss, bossIntroSeen, forceIntro, resetEncounterFlags]);
+
+  const showDebug =
+    typeof window !== "undefined" && !!window.TEST?.debugCircle;
+
+  const arenaCenter = new THREE.Vector3(0, 0, 0);
 
   if (combatPhase === "in_combat") {
     return (
@@ -40,28 +64,31 @@ export default function Game() {
         <CombatArenaBackdrop />
         <Combat />
 
-        {/* Debug hit circles for testing */}
-        <DebugHitCircle radius={2.5} color="#4ade80" />
-        <DebugHitCircle
-          radius={3}
-          thickness={0.2}
-          color="#f87171"
-          startAngleDeg={-60}
-          endAngleDeg={60}
-        />
-
-        {/* If you have TelegraphEvadeArrows.tsx, uncomment below */}
-        {/* <TelegraphEvadeArrows /> */}
+        {showDebug && (
+          <DebugHitCircle position={arenaCenter} radius={2.5} color="#4ade80" />
+        )}
 
         <TelegraphSuccessToast />
         <DamageNumbers />
         <DebugDamageHarness />
         <MusicCorruption />
+
+        {(showIntro || forceIntro) && (
+          <BossIntro
+            onComplete={() => {
+              setShowIntro(false);
+              setBossIntroSeen(true); // 👈 mark as seen for this encounter
+              if (typeof window !== "undefined") {
+                window.TEST!.showBossIntro = false; // clear manual force
+              }
+            }}
+          />
+        )}
       </>
     );
   }
 
-  // Overworld (and during entering/exiting)
+  // Overworld
   return (
     <>
       <GameWorld />

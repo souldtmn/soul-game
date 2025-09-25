@@ -1,80 +1,74 @@
-import React, { useMemo, useRef } from "react";
-import { useFrame } from "@react-three/fiber";
+// client/src/components/DebugHitCircle.tsx
 import * as THREE from "three";
+import { useMemo } from "react";
+import { useCombat } from "../lib/stores/useCombat";
 
-type DebugHitCircleProps = {
-  /** Outer radius in world units */
+type Props = {
+  position?: THREE.Vector3 | [number, number, number];
   radius?: number;
-  /** Ring thickness in world units (outer - inner) */
-  thickness?: number;
-  /** Center position */
-  position?: [number, number, number];
-  /** Rotation (defaults to lying flat on the ground) */
-  rotation?: [number, number, number];
-  /** Segments for smoothness */
+  inner?: number;         // optional alternative to radius
+  outer?: number;         // optional thickness control
   segments?: number;
-  /** Start angle (deg) for arcs; 0 = +X axis, CCW */
-  startAngleDeg?: number;
-  /** End angle (deg) for arcs */
-  endAngleDeg?: number;
-  /** Color & opacity */
+  thetaStart?: number;
+  thetaLength?: number;
   color?: string;
   opacity?: number;
-  /** Gentle breathing pulse */
-  pulse?: boolean;
-  pulseSpeed?: number; // cycles per second
+  rotationX?: number;     // default -Math.PI / 2
+  rotationY?: number;
+  rotationZ?: number;
 };
 
 export default function DebugHitCircle({
-  radius = 3,
-  thickness = 0.25,
-  position = [0, 0.01, 0],
-  rotation = [-Math.PI / 2, 0, 0], // flat on XZ plane
+  position = new THREE.Vector3(0, 0.02, 0),
+  radius = 2.5,
+  inner,
+  outer,
   segments = 64,
-  startAngleDeg = 0,
-  endAngleDeg = 360,
-  color = "#ff6b6b",
+  thetaStart = 0,
+  thetaLength = Math.PI * 2,
+  color = "#4ade80",
   opacity = 0.6,
-  pulse = true,
-  pulseSpeed = 1.5,
-}: DebugHitCircleProps) {
-  const matRef = useRef<THREE.MeshBasicMaterial>(null);
+  rotationX = -Math.PI / 2,
+  rotationY = 0,
+  rotationZ = 0,
+}: Props) {
+  const { combatPhase } = useCombat();
 
-  // Clamp inner radius so it never goes negative
-  const [inner, outer] = useMemo(() => {
-    const o = Math.max(thickness, radius);
-    const i = Math.max(0.0001, o - thickness);
-    return [i, o];
-  }, [radius, thickness]);
+  // ✅ Self-guard: only render in combat AND when TEST.debugCircle is true
+  const showDebug =
+    typeof window !== "undefined" && !!window.TEST?.debugCircle;
 
-  // Convert degrees to radians for RingGeometry
-  const { thetaStart, thetaLength } = useMemo(() => {
-    const s = THREE.MathUtils.degToRad(startAngleDeg);
-    // allow wrap-around gracefully
-    let lenDeg = endAngleDeg - startAngleDeg;
-    if (lenDeg <= 0) lenDeg += 360;
-    return { thetaStart: s, thetaLength: THREE.MathUtils.degToRad(lenDeg) };
-  }, [startAngleDeg, endAngleDeg]);
+  if (combatPhase !== "in_combat" || !showDebug) return null;
 
-  useFrame((state) => {
-    if (!pulse || !matRef.current) return;
-    const t = state.clock.getElapsedTime();
-    // subtle opacity + thickness “breathing”
-    const osc = (Math.sin(t * Math.PI * 2 * pulseSpeed) + 1) / 2; // 0..1
-    matRef.current.opacity = THREE.MathUtils.lerp(opacity * 0.6, opacity, osc);
-  });
+  // Geometry sizes
+  const innerR = inner ?? (radius - 0.3);
+  const outerR = outer ?? radius;
+
+  const geom = useMemo(
+    () => new THREE.RingGeometry(innerR, outerR, segments, 1, thetaStart, thetaLength),
+    [innerR, outerR, segments, thetaStart, thetaLength]
+  );
+
+  const mat = useMemo(
+    () =>
+      new THREE.MeshBasicMaterial({
+        color,
+        wireframe: false,
+        transparent: true,
+        opacity,
+        side: THREE.DoubleSide,
+      }),
+    [color, opacity]
+  );
+
+  const posArray =
+    position instanceof THREE.Vector3
+      ? [position.x, position.y, position.z]
+      : position;
 
   return (
-    <mesh position={position} rotation={rotation}>
-      {/* RingGeometry: [innerRadius, outerRadius, thetaSegments, phiSegments, thetaStart, thetaLength] */}
-      <ringGeometry args={[inner, outer, segments, 1, thetaStart, thetaLength]} />
-      <meshBasicMaterial
-        ref={matRef}
-        color={color}
-        transparent
-        opacity={opacity}
-        depthWrite={false} /* draw nicely over floor */
-      />
-    </mesh>
+    <group position={posArray as [number, number, number]} rotation={[rotationX, rotationY, rotationZ]}>
+      <mesh geometry={geom} material={mat} />
+    </group>
   );
 }
