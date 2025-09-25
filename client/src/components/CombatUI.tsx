@@ -1,79 +1,64 @@
+// client/src/components/CombatUI.tsx
 import { useCombat } from "../lib/stores/useCombat";
-import PunchOutTransition from "./transition/PunchOutTransition";
-
 
 export default function CombatUI() {
   const { combatPhase, currentEnemy } = useCombat();
 
-  if (combatPhase === 'entering_combat') {
+  // Normalize your phase names just in case other parts use entering_combat/exiting_combat
+  const entering = combatPhase === "entering" || combatPhase === "entering_combat";
+  const inCombat = combatPhase === "in_combat";
+  const exiting  = combatPhase === "exiting"  || combatPhase === "exiting_combat";
+
+  // Render nothing outside combat-related phases
+  if (!entering && !inCombat && !exiting) return null;
+
+  const hp   = currentEnemy?.health ?? 0;
+  const max  = Math.max(1, currentEnemy?.maxHealth ?? 1);
+  const pct  = Math.max(0, Math.min(100, (hp / max) * 100));
+  const name = (currentEnemy?.type ?? "Unknown").toString().toUpperCase();
+
+  if (entering) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white p-8 rounded-lg text-center">
-          <h2 className="text-2xl font-bold mb-4">Entering Combat!</h2>
-          <p className="text-lg">Preparing to fight {currentEnemy?.type} enemy...</p>
+      <div className="fixed inset-0 z-40 flex items-center justify-center pointer-events-none">
+        <div className="pointer-events-auto bg-white/95 p-6 rounded-lg text-center shadow-xl">
+          <h2 className="text-2xl font-bold mb-2">Entering Combat!</h2>
+          <p className="text-lg">Preparing to fight {name}...</p>
         </div>
       </div>
     );
   }
 
-  if (combatPhase === 'in_combat') {
+  if (inCombat) {
     return (
-      <div className="fixed inset-0 bg-gradient-to-b from-blue-900 to-purple-900 flex flex-col z-40">
-        {/* Combat Arena Background */}
-        <div className="flex-1 relative overflow-hidden">
-          {/* Enemy Display */}
-          <div className="absolute top-20 left-1/2 transform -translate-x-1/2">
-            <div className="text-center">
-              <h2 className="text-4xl font-bold text-white mb-4">
-                Fighting: {currentEnemy?.type?.toUpperCase()} ENEMY
-              </h2>
-              <div className="w-32 h-32 bg-red-600 mx-auto rounded-lg flex items-center justify-center">
-                <div className="text-6xl text-white">👹</div>
-              </div>
-              {/* Enemy Health Bar */}
-              <div className="mt-4 w-64 h-6 bg-gray-300 rounded mx-auto">
-                <div 
-                  className="h-full bg-red-500 rounded transition-all duration-300"
-                  style={{
-                    width: `${((currentEnemy?.health || 0) / (currentEnemy?.maxHealth || 1)) * 100}%`
-                  }}
-                />
-              </div>
-              <p className="text-white mt-2">
-                HP: {currentEnemy?.health}/{currentEnemy?.maxHealth}
-              </p>
-            </div>
+      <div className="fixed inset-0 z-30 pointer-events-none">
+        {/* Enemy header */}
+        <div className="mt-8 mx-auto max-w-md text-center pointer-events-auto">
+          <h2 className="text-3xl font-bold text-white drop-shadow mb-3">
+            Fighting: {name}
+          </h2>
+
+          {/* Enemy HP */}
+          <div className="w-64 h-6 mx-auto bg-gray-700/70 rounded overflow-hidden border border-white/30">
+            <div
+              className="h-full bg-red-500 transition-all duration-300"
+              style={{ width: `${pct}%` }}
+            />
           </div>
-          
-          {/* Player Combat Display */}
-          <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2">
-            <div className="text-center">
-              <div className="w-24 h-24 bg-blue-500 mx-auto rounded-lg flex items-center justify-center mb-4">
-                <div className="text-4xl text-white">🥊</div>
-              </div>
-              <p className="text-white text-lg font-bold">PLAYER</p>
-            </div>
-          </div>
-          
-          {/* Combat Instructions */}
-          <div className="absolute bottom-4 left-4 right-4 text-center">
-            <div className="bg-black bg-opacity-75 p-4 rounded">
-              <p className="text-white">
-                <span className="font-bold">SPACEBAR:</span> Attack | 
-                <span className="font-bold">S:</span> Defend
-              </p>
-            </div>
-          </div>
+          <p className="text-white/90 mt-1 text-sm">
+            HP: {hp} / {max}
+          </p>
         </div>
+
+        {/* (Add more combat-only DOM here later if needed) */}
       </div>
     );
   }
 
-  if (combatPhase === 'exiting_combat') {
+  if (exiting) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white p-8 rounded-lg text-center">
-          <h2 className="text-2xl font-bold mb-4">Combat Complete!</h2>
+      <div className="fixed inset-0 z-40 flex items-center justify-center pointer-events-none">
+        <div className="pointer-events-auto bg-white/95 p-6 rounded-lg text-center shadow-xl">
+          <h2 className="text-2xl font-bold mb-2">Combat Complete!</h2>
           <p className="text-lg">Returning to exploration...</p>
         </div>
       </div>
