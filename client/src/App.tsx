@@ -1,5 +1,5 @@
 // client/src/App.tsx
-import React from "react";
+import React, { useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { KeyboardControls } from "@react-three/drei";
 
@@ -11,6 +11,9 @@ import HUD from "./components/HUD";                           // overworld-only 
 import CombatUI from "./components/CombatUI";                 // combat phases only (self-guarded)
 import TelegraphInputHints from "./components/TelegraphInputHints"; // tutorial hints (toggle)
 import BossIntro from "./components/BossIntro";               // optional overlay via TEST toggle
+
+// NEW: Start Screen
+import StartScreen from "./components/StartScreen";
 
 /* ===========================
    Global TEST toggles
@@ -90,6 +93,9 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { err
    App
    =========================== */
 export default function App() {
+  // NEW: simple app-level route
+  const [route, setRoute] = useState<"menu" | "game" | "options">("menu");
+
   const showBlueCube  = typeof window !== "undefined" && !!window.TEST?.showBlueCube;
   const showHints     = typeof window !== "undefined" && !!window.TEST?.showHints;
   const showBossIntro = typeof window !== "undefined" && !!window.TEST?.showBossIntro;
@@ -97,44 +103,91 @@ export default function App() {
   return (
     <div style={{ width: "100vw", height: "100vh", background: "#0b0c14" }}>
       <KeyboardControls map={controls}>
-        {/* ===== Canvas: 3D content only ===== */}
-        <Canvas camera={{ position: [0, 6, 12], fov: 45 }} shadows>
-          <ambientLight intensity={0.35} />
-          <directionalLight position={[10, 10, 5]} intensity={1} castShadow />
-
-          {showBlueCube ? (
-            // Blue cube test scene
-            <mesh position={[0, 1, 0]} castShadow>
-              <boxGeometry args={[1, 1, 1]} />
-              <meshStandardMaterial color="#4466ff" />
-            </mesh>
-          ) : (
-            // Real game scene (no DOM in Canvas)
-            <ErrorBoundary>
-              <Game />
-            </ErrorBoundary>
-          )}
-        </Canvas>
-
-        {/* ===== DOM overlays (outside Canvas!) ===== */}
-        <ErrorBoundary>
-          <HUD />
-        </ErrorBoundary>
-
-        <ErrorBoundary>
-          <CombatUI />
-        </ErrorBoundary>
-
-        {showHints && (
-          <ErrorBoundary>
-            <TelegraphInputHints />
-          </ErrorBoundary>
+        {/* ===== Route: MENU (Start screen only, no Canvas) ===== */}
+        {route === "menu" && (
+          <StartScreen
+            onStart={() => setRoute("game")}
+            onOptions={() => setRoute("options")}
+            // optional theming:
+            // color="#7CFF6B"
+            // bg="#0A0A0A"
+          />
         )}
 
-        {showBossIntro && (
-          <ErrorBoundary>
-            <BossIntro onComplete={() => console.log("BossIntro complete")} />
-          </ErrorBoundary>
+        {/* ===== Route: OPTIONS (placeholder UI; no Canvas) ===== */}
+        {route === "options" && (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              display: "grid",
+              placeItems: "center",
+              color: "#EDEDED",
+              fontFamily: "ui-monospace, Consolas, monospace",
+              background: "#0b0c14",
+              gap: 16,
+            }}
+          >
+            <div style={{ opacity: 0.9, fontSize: 24 }}>Options (WIP)</div>
+            <button
+              onClick={() => setRoute("menu")}
+              style={{
+                padding: "10px 18px",
+                background: "#1a1f2b",
+                border: "1px solid #2c3344",
+                color: "#EDEDED",
+                cursor: "pointer",
+                borderRadius: 8,
+              }}
+            >
+              Back
+            </button>
+          </div>
+        )}
+
+        {/* ===== Route: GAME (Canvas + overlays) ===== */}
+        {route === "game" && (
+          <>
+            {/* Canvas: 3D content only */}
+            <Canvas camera={{ position: [0, 6, 12], fov: 45 }} shadows>
+              <ambientLight intensity={0.35} />
+              <directionalLight position={[10, 10, 5]} intensity={1} castShadow />
+
+              {showBlueCube ? (
+                // Blue cube test scene
+                <mesh position={[0, 1, 0]} castShadow>
+                  <boxGeometry args={[1, 1, 1]} />
+                  <meshStandardMaterial color="#4466ff" />
+                </mesh>
+              ) : (
+                // Real game scene (no DOM in Canvas)
+                <ErrorBoundary>
+                  <Game />
+                </ErrorBoundary>
+              )}
+            </Canvas>
+
+            {/* DOM overlays (outside Canvas!) */}
+            <ErrorBoundary>
+              <HUD />
+            </ErrorBoundary>
+
+            <ErrorBoundary>
+              <CombatUI />
+            </ErrorBoundary>
+
+            {showHints && (
+              <ErrorBoundary>
+                <TelegraphInputHints />
+              </ErrorBoundary>
+            )}
+
+            {showBossIntro && (
+              <ErrorBoundary>
+                <BossIntro onComplete={() => console.log("BossIntro complete")} />
+              </ErrorBoundary>
+            )}
+          </>
         )}
       </KeyboardControls>
     </div>
