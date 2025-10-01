@@ -47,6 +47,17 @@ Every hammer strike, every cleanup, every new feature forged into the code is re
 
 ---
 
+## v0.3.0 — Start Screen Milestone (2025-10-01)  
+### Added  
+- Start screen with terminal typing (`insert coin` → glitch → `SOUL`) and amber CRT styling  
+- Ember background canvas effect  
+- WebAudio SFX: typewriter ticks, glitch zap+crackle, melancholic arcade buzz  
+
+### Fixed  
+- Glitch transition is StrictMode-safe (no more stuck-on-coin)  
+
+---
+
 ## Next Planned Steps  
 - Add toggle flag for DebugHitCircle directly in Game.tsx.  
 - Refactor HUD into “base HUD + context overlays.”  
